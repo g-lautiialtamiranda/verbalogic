@@ -1,0 +1,296 @@
+{
+ "sentences": [
+  {
+   "trans": "leverage",
+   "orig": "aprovechar",
+   "backend": 10
+  }
+ ],
+ "dict": [
+  {
+   "pos": "verb",
+   "terms": [
+    "take advantage of",
+    "take",
+    "use",
+    "exploit",
+    "benefit",
+    "seize",
+    "harness",
+    "tap",
+    "avail",
+    "utilize",
+    "draw on",
+    "draw upon",
+    "improve",
+    "cash in on"
+   ],
+   "entry": [
+    {
+     "word": "take advantage of",
+     "reverse_translation": [
+      "aprovechar",
+      "aprovecharse de"
+     ],
+     "score": 0.07711172
+    },
+    {
+     "word": "take",
+     "reverse_translation": [
+      "tomar",
+      "llevar",
+      "seguir",
+      "aprovechar",
+      "asumir",
+      "hacer"
+     ],
+     "score": 0.047507152
+    },
+    {
+     "word": "use",
+     "reverse_translation": [
+      "utilizar",
+      "usar",
+      "emplear",
+      "aprovechar",
+      "manejar",
+      "servirse de"
+     ],
+     "score": 0.043255754
+    },
+    {
+     "word": "exploit",
+     "reverse_translation": [
+      "explotar",
+      "aprovechar"
+     ],
+     "score": 0.02244079
+    },
+    {
+     "word": "benefit",
+     "reverse_translation": [
+      "beneficiar",
+      "aprovechar",
+      "sacar provecho"
+     ],
+     "score": 0.019496895
+    },
+    {
+     "word": "seize",
+     "reverse_translation": [
+      "aprovechar",
+      "apoderarse de",
+      "agarrar",
+      "embargar",
+      "coger",
+      "captar"
+     ],
+     "score": 0.019194625
+    },
+    {
+     "word": "harness",
+     "reverse_translation": [
+      "aprovechar",
+      "enjaezar",
+      "utilizar",
+      "enganchar",
+      "explotar",
+      "aparejar"
+     ],
+     "score": 0.015912903
+    },
+    {
+     "word": "tap",
+     "reverse_translation": [
+      "aprovechar",
+      "golpear ligeramente",
+      "pulsar",
+      "pinchar",
+      "explotar",
+      "golpear suavemente"
+     ],
+     "score": 0.014717029
+    },
+    {
+     "word": "avail",
+     "reverse_translation": [
+      "aprovechar",
+      "valer"
+     ],
+     "score": 0.010600278
+    },
+    {
+     "word": "utilize",
+     "reverse_translation": [
+      "utilizar",
+      "usar",
+      "aprovechar"
+     ],
+     "score": 0.004853161
+    },
+    {
+     "word": "draw on",
+     "reverse_translation": [
+      "aprovechar",
+      "recurrir",
+      "usar",
+      "hacer uso",
+      "beneficiarse",
+      "inspirarse"
+     ],
+     "score": 0.00259771
+    },
+    {
+     "word": "draw upon",
+     "reverse_translation": [
+      "aprovechar",
+      "recurrir",
+      "usar",
+      "hacer uso",
+      "beneficiarse",
+      "inspirarse"
+     ],
+     "score": 0.001066098
+    },
+    {
+     "word": "improve",
+     "reverse_translation": [
+      "mejorar",
+      "aumentar",
+      "perfeccionar",
+      "mejorarse",
+      "perfeccionarse",
+      "aprovechar"
+     ],
+     "score": 0.00031025222
+    },
+    {
+     "word": "cash in on",
+     "reverse_translation": [
+      "aprovechar"
+     ],
+     "score": 0.000105558
+    }
+   ],
+   "base_form": "aprovechar",
+   "pos_enum": 2
+  }
+ ],
+ "src": "es",
+ "confidence": 1.0,
+ "spell": {},
+ "ld_result": {
+  "srclangs": [
+   "es"
+  ],
+  "srclangs_confidences": [
+   1.0
+  ],
+  "extended_srclangs": [
+   "es"
+  ]
+ },
+ "synsets": [
+  {
+   "pos": "verb",
+   "entry": [
+    {
+     "synonym": [
+      "usar",
+      "emplear",
+      "utilizar",
+      "beneficiar",
+      "explotar",
+      "exprimir",
+      "estrujar",
+      "lucrarse"
+     ],
+     "definition_id": "1Qwl6iy"
+    },
+    {
+     "synonym": [
+      "beneficiar",
+      "favorecer"
+     ],
+     "definition_id": "1QxfI7v",
+     "label_info": {
+      "labels": [
+       "poco usado"
+      ]
+     }
+    },
+    {
+     "synonym": [
+      "rendir",
+      "rentar",
+      "servir",
+      "valer",
+      "fructificar",
+      "usufructuar",
+      "redituar"
+     ],
+     "definition_id": "1QvNhHh"
+    },
+    {
+     "synonym": [
+      "abusar",
+      "utilizar",
+      "explotar",
+      "exprimir",
+      "chupar",
+      "prevalerse",
+      "beneficiarse"
+     ],
+     "definition_id": "1QxyZyb"
+    }
+   ],
+   "base_form": "aprovechar",
+   "pos_enum": 2
+  }
+ ],
+ "definitions": [
+  {
+   "pos": "verb",
+   "entry": [
+    {
+     "gloss": "Emplear útilmente algo, hacerlo provechoso o sacarle el máximo rendimiento.",
+     "definition_id": "1Qwl6iy",
+     "example": "Aprovechar la tela, el tiempo, la ocasión."
+    },
+    {
+     "gloss": "Hacer bien, proteger, favorecer. U. t. c. intr.",
+     "definition_id": "1QxfI7v",
+     "label_info": {
+      "labels": [
+       "poco usado"
+      ]
+     }
+    },
+    {
+     "gloss": "Dicho de una cosa: Servir de provecho.",
+     "definition_id": "1QvNhHh"
+    },
+    {
+     "gloss": "Adelantar en virtud, estudios, artes, etc. U. t. c. prnl.",
+     "definition_id": "1QvVaJ5"
+    },
+    {
+     "gloss": "Orzar cuanto permite la dirección del viento reinante.",
+     "definition_id": "1Qw35nE",
+     "label_info": {
+      "subject": [
+       "marina"
+      ]
+     }
+    },
+    {
+     "gloss": "Sacar provecho de algo o de alguien, generalmente con astucia o abuso.",
+     "definition_id": "1QxyZyb",
+     "example": "Se aprovechaba de su posición."
+    }
+   ],
+   "base_form": "aprovechar",
+   "pos_enum": 2
+  }
+ ]
+}

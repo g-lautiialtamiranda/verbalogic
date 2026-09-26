@@ -1,0 +1,70 @@
+# VerbaLogic settings.
+# Edit this file by hand or from Settings (tray icon > Settings, or Ctrl+, in the popup).
+# Changes apply as soon as you save. If a value is invalid, VerbaLogic uses the default and tells you.
+
+[hotkey]
+# Modifiers: ctrl, alt, shift, win. Keys: a-z, 0-9, f1-f24, space, enter, tab, insert...
+# Avoid ctrl+alt+t (Warp: reopen closed tab).
+open = "ctrl+alt+d"
+
+[languages]
+# The two main columns, always shown. Codes: es, en, pt, fr, it, de, ...
+primary = "es"
+secondary = "en"
+# Extra columns that start switched on. Toggle any of "available_extra" with the + buttons in the popup.
+extra = []
+available_extra = ["pt"]
+
+[capture]
+# Copy the current selection automatically when you press the hotkey.
+# If off (or the app is set to "none"), VerbaLogic just reads what is already on the clipboard.
+auto_copy = true
+# How long to wait for the app to copy, in milliseconds.
+wait_ms = 350
+
+# Copy keystroke per app (process name in lowercase). "none" = send nothing, only read the clipboard.
+# Terminals use ctrl+shift+c because ctrl+c means "stop" there.
+[capture.copy_keys]
+default = "ctrl+c"
+"warp.exe" = "ctrl+shift+c"
+"windowsterminal.exe" = "ctrl+shift+c"
+"wezterm-gui.exe" = "ctrl+shift+c"
+"alacritty.exe" = "ctrl+shift+c"
+"tabby.exe" = "ctrl+shift+c"
+"hyper.exe" = "ctrl+shift+c"
+"mintty.exe" = "none"
+"conhost.exe" = "none"
+"openconsole.exe" = "none"
+"cmd.exe" = "none"
+"powershell.exe" = "none"
+"pwsh.exe" = "none"
+"putty.exe" = "none"
+
+[ui]
+theme = "system"          # system | light | dark
+accent = "#6C5CE7"
+width = 820
+height = 560
+font_size = 14
+close_on_focus_loss = true
+max_synonyms = 12
+max_examples = 3
+max_meanings = 8          # how many meanings of a word you can step through with the arrows
+
+[rewrites]
+# "Other ways to say it": natural rewrites from a free AI model on OpenRouter.
+enabled = true
+base_url = "https://openrouter.ai/api/v1"
+# Tried in order. If none works, VerbaLogic picks any free model OpenRouter currently lists.
+models = ["qwen/qwen3.8-27b:free", "z-ai/glm-5.2:free", "google/gemma-4-31b-it:free"]
+# The key is read from Windows Credential Manager (set it in Settings) or from this environment variable.
+api_key_env = "OPENROUTER_API_KEY"
+count = 4
+# Spanish rewrites: "both" (vos + neutral), "rioplatense" or "neutral".
+spanish_variant = "both"
+# true = only for selections longer than 3 words.
+only_for_sentences = false
+timeout_seconds = 25
+
+[startup]
+start_with_windows = false

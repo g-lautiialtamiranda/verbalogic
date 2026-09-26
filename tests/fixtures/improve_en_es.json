@@ -1,0 +1,352 @@
+{
+ "sentences": [
+  {
+   "trans": "mejorar",
+   "orig": "improve",
+   "backend": 10
+  }
+ ],
+ "dict": [
+  {
+   "pos": "verb",
+   "terms": [
+    "mejorar",
+    "aumentar",
+    "perfeccionar",
+    "mejorarse",
+    "perfeccionarse",
+    "aprovechar",
+    "embellecer",
+    "aumentarse",
+    "bonificar",
+    "medrar",
+    "hacer progresos",
+    "embonar",
+    "reformar a",
+    "abonar",
+    "componerse",
+    "ilustrar",
+    "edificar"
+   ],
+   "entry": [
+    {
+     "word": "mejorar",
+     "reverse_translation": [
+      "improve",
+      "enhance",
+      "upgrade",
+      "get better",
+      "raise",
+      "improve on"
+     ],
+     "score": 0.47236654
+    },
+    {
+     "word": "aumentar",
+     "reverse_translation": [
+      "increase",
+      "enhance",
+      "boost",
+      "improve",
+      "augment",
+      "expand"
+     ],
+     "score": 0.008926329
+    },
+    {
+     "word": "perfeccionar",
+     "reverse_translation": [
+      "perfect",
+      "improve",
+      "develop",
+      "polish",
+      "improve on"
+     ],
+     "score": 0.0034956008
+    },
+    {
+     "word": "mejorarse",
+     "reverse_translation": [
+      "improve",
+      "get better",
+      "improve oneself",
+      "look up"
+     ],
+     "score": 0.0011172611
+    },
+    {
+     "word": "perfeccionarse",
+     "reverse_translation": [
+      "improve"
+     ],
+     "score": 0.00018238787
+    },
+    {
+     "word": "aprovechar",
+     "reverse_translation": [
+      "take advantage of",
+      "take",
+      "use",
+      "exploit",
+      "benefit",
+      "improve"
+     ],
+     "score": 7.603058e-05
+    },
+    {
+     "word": "embellecer",
+     "reverse_translation": [
+      "beautify",
+      "embellish",
+      "prettify",
+      "glamorize",
+      "glamourize"
+     ],
+     "score": 2.3924082e-05
+    },
+    {
+     "word": "aumentarse",
+     "reverse_translation": [
+      "increase",
+      "improve",
+      "expand",
+      "multiply",
+      "intensify",
+      "deepen"
+     ],
+     "score": 1.2805638e-05
+    },
+    {
+     "word": "bonificar",
+     "reverse_translation": [
+      "meliorate",
+      "improve"
+     ],
+     "score": 5.2554233e-06
+    },
+    {
+     "word": "medrar",
+     "reverse_translation": [
+      "thrive",
+      "prosper",
+      "improve",
+      "increase"
+     ],
+     "score": 2.123383e-06
+    },
+    {
+     "word": "hacer progresos",
+     "reverse_translation": [
+      "progress",
+      "improve",
+      "get on",
+      "come along",
+      "jog"
+     ],
+     "score": 1.7330547e-06
+    },
+    {
+     "word": "embonar",
+     "reverse_translation": [
+      "improve",
+      "manure",
+      "sheathe"
+     ],
+     "score": 6.5779335e-07
+    },
+    {
+     "word": "reformar a",
+     "reverse_translation": [
+      "improve",
+      "contort"
+     ],
+     "score": 5.285518e-07
+    },
+    {
+     "word": "abonar",
+     "reverse_translation": [
+      "pay",
+      "fertilize",
+      "credit",
+      "compost",
+      "manure",
+      "improve"
+     ],
+     "score": 1.3156695e-07
+    },
+    {
+     "word": "componerse",
+     "reverse_translation": [
+      "integrate",
+      "improve"
+     ],
+     "score": 1.3156695e-07
+    },
+    {
+     "word": "ilustrar",
+     "reverse_translation": [
+      "illustrate",
+      "exemplify",
+      "explain",
+      "instruct",
+      "improve"
+     ],
+     "score": 1.3156695e-07
+    },
+    {
+     "word": "edificar",
+     "reverse_translation": [
+      "build",
+      "edify",
+      "raise",
+      "upload"
+     ],
+     "score": 1.3156695e-07
+    }
+   ],
+   "base_form": "improve",
+   "pos_enum": 2
+  }
+ ],
+ "src": "en",
+ "confidence": 0.98689204,
+ "spell": {},
+ "ld_result": {
+  "srclangs": [
+   "en"
+  ],
+  "srclangs_confidences": [
+   0.98689204
+  ],
+  "extended_srclangs": [
+   "en"
+  ]
+ },
+ "synsets": [
+  {
+   "pos": "verb",
+   "entry": [
+    {
+     "synonym": [
+      "give a facelift to"
+     ],
+     "definition_id": "m_en_gbus0499840.005",
+     "label_info": {
+      "register": [
+       "informal"
+      ]
+     }
+    },
+    {
+     "synonym": [
+      "make better",
+      "better",
+      "ameliorate",
+      "upgrade",
+      "refine",
+      "enhance",
+      "boost",
+      "build on",
+      "help",
+      "raise",
+      "revamp",
+      "brush up",
+      "polish up",
+      "perk up",
+      "tweak"
+     ],
+     "definition_id": "m_en_gbus0499840.005"
+    },
+    {
+     "synonym": [
+      "meliorate"
+     ],
+     "definition_id": "m_en_gbus0499840.005",
+     "label_info": {
+      "register": [
+       "rare"
+      ]
+     }
+    },
+    {
+     "synonym": [
+      "look up"
+     ],
+     "definition_id": "m_en_gbus0499840.005",
+     "label_info": {
+      "register": [
+       "informal"
+      ]
+     }
+    },
+    {
+     "synonym": [
+      "get better",
+      "become better",
+      "advance",
+      "progress",
+      "develop",
+      "make headway",
+      "come along",
+      "make progress",
+      "take steps forward",
+      "pick up",
+      "rally",
+      "perk up",
+      "make strides"
+     ],
+     "definition_id": "m_en_gbus0499840.005"
+    },
+    {
+     "synonym": [
+      "surpass",
+      "better",
+      "do better than",
+      "outdo",
+      "exceed",
+      "beat",
+      "top",
+      "trump",
+      "cap",
+      "outstrip",
+      "overshadow",
+      "go one better than"
+     ],
+     "definition_id": "m_en_gbus0499840.012"
+    }
+   ],
+   "base_form": "improve",
+   "pos_enum": 2
+  }
+ ],
+ "definitions": [
+  {
+   "pos": "verb",
+   "entry": [
+    {
+     "gloss": "make or become better.",
+     "definition_id": "m_en_gbus0499840.005",
+     "example": "we’ve used technology to improve relations with customers"
+    }
+   ],
+   "base_form": "improve",
+   "pos_enum": 2
+  }
+ ],
+ "examples": {
+  "example": [
+   {
+    "text": "they are trying to <b>improve</b> on the tired old style",
+    "definition_id": "m_en_gbus0499840.012"
+   },
+   {
+    "text": "we’ve used technology to <b>improve</b> relations with customers",
+    "definition_id": "m_en_gbus0499840.005"
+   },
+   {
+    "text": "I subscribed to two magazines to <b>improve</b> my mind",
+    "definition_id": "m_en_gbus0499840.011"
+   }
+  ]
+ }
+}

@@ -1,0 +1,30 @@
+name: Suggestion
+description: An idea to make VerbaLogic better.
+labels: ["needs-review"]
+body:
+  - type: markdown
+    attributes:
+      value: Check the [roadmap](https://github.com/g-lautiialtamiranda/verbalogic/blob/main/suggestions/README.md) first, since your idea might already be there. The maintainer reviews every suggestion and decides what gets built.
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What would you like VerbaLogic to do?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it helps
+      description: What problem does it solve, or when would you use it?
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      options:
+        - "frontend: how the popup looks"
+        - "functional: what the app does"
+        - "reliability: data sources, errors, privacy, speed"
+        - "idea: bigger, to talk through first"

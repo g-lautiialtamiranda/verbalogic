@@ -1,0 +1,35 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "verbalogic"
+version = "0.1.0"
+description = "Select text anywhere on Windows, press a hotkey, get translations, synonyms and natural rewrites in a popup."
+readme = "README.md"
+requires-python = ">=3.11"
+license = {text = "MIT"}
+dependencies = [
+    "PySide6-Essentials>=6.8",
+    "httpx>=0.27",
+    "tomlkit>=0.13",
+]
+
+[project.urls]
+Homepage = "https://github.com/g-lautiialtamiranda/verbalogic"
+Issues = "https://github.com/g-lautiialtamiranda/verbalogic/issues"
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.gui-scripts]
+verbalogic = "verbalogic.app:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+verbalogic = ["config.default.toml", "prompts/*.md", "ui/*.qss", "ui/*.svg"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
