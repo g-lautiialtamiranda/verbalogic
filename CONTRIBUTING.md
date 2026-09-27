@@ -6,7 +6,7 @@ Thanks for helping. There are three ways to contribute. In all of them, the main
 [Open a bug report](https://github.com/g-lautiialtamiranda/verbalogic/issues/new?template=bug_report.yml). Say what you did, what you expected and what happened. The log (`%APPDATA%\VerbaLogic\verbalogic.log`) helps a lot. It can contain text you looked up, so check it and remove anything private before you paste it.
 
 ## Suggest an idea
-[Open a suggestion](https://github.com/g-lautiialtamiranda/verbalogic/issues/new?template=suggestion.yml). Explain what you'd like and why it would help. Check [`suggestions/`](suggestions/README.md) first, since it might already be planned or might have been decided against.
+[Open a suggestion](https://github.com/g-lautiialtamiranda/verbalogic/issues/new?template=suggestion.yml). Explain what you'd like and why it would help. Check [`suggestions/`](suggestions/README.md) (open ideas) and [`record/`](record/README.md) (what's been built or decided against) first.
 
 ## Propose a code change
 1. For anything bigger than a small fix, open an issue first so we can agree on the idea before you spend time on it.

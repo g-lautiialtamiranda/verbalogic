@@ -23,7 +23,7 @@ from .providers import datamuse
 from .providers.google_free import GoogleFree, RateLimited, ServiceError
 from .providers.llm import ChatClient, LLMError
 from .rewrites import build_prompt, parse_rewrites
-from .senses import fallback_translation, match_translations, pick_synonyms, synonyms_line
+from .senses import fallback_translation, match_translations, pick_synonyms, similar_words, synonyms_line
 
 log = logging.getLogger("verbalogic.lookup")
 
@@ -167,10 +167,13 @@ class Lookup(QObject):
                             max_meanings: int = 8) -> None:
         target_data: dict = {}
         source_data: dict = {}
+        a_alts: list[dict] = []   # the text's translations, each with the words it translates back to
+        b_alts: list[dict] = []   # the same for the main translation
         # A: the selected text itself -> alternative translations + source-language synonyms/examples.
         dict_target = lang or ("en" if not L.same(src, "en") else "es")
         try:
             a = self._dictionary(text, dict_target, src)
+            a_alts = a["alternatives"]
             if lang:
                 target_data["alternatives"] = a["alternatives"]
             if source_col:
@@ -185,6 +188,8 @@ class Lookup(QObject):
                     ]
                 if lang:
                     target_data["senses"] = self._target_senses(senses, a["alternatives"], src, lang, trans)
+                if source_col and lang and not L.same(source_col, "en"):
+                    _similar_per_sense(source_data["senses"], target_data["senses"], a_alts, text)
         except RateLimited as e:
             note = f"Dictionary resting (Google limit). Back in ~{e.seconds}s."
             target_data["note"] = source_data["note"] = note
@@ -195,6 +200,7 @@ class Lookup(QObject):
         if lang and trans and is_word_mode(trans) and trans.lower() != text.lower() and "note" not in target_data:
             try:
                 b = self._dictionary(trans, src, lang)
+                b_alts = b["alternatives"]
                 target_data.update(_word_info(b, "google"))
             except RateLimited as e:
                 target_data["note"] = f"Dictionary resting (Google limit). Back in ~{e.seconds}s."
@@ -207,6 +213,16 @@ class Lookup(QObject):
                 words = self._datamuse(word)
                 if words:
                     data["synonyms"] = [{"pos": "", "words": words, "source": "datamuse"}]
+
+        # Still nothing (often Spanish; English has Datamuse): the words Google translates back
+        # to. "Also translates as" already lists the text's own translations, so those are left out.
+        shown = [x["word"] for x in a_alts]
+        for data, code, word, alts, skip in ((target_data, lang, trans, b_alts, shown),
+                                             (source_data, source_col, text, a_alts, [])):
+            if code and not L.same(code, "en") and word and alts and not data.get("synonyms"):
+                words = similar_words(alts, [word, *skip])
+                if words:
+                    data["synonyms"] = [{"pos": "", "words": words, "source": "similar"}]
 
         if not self._alive(gen):
             return
@@ -228,7 +244,7 @@ class Lookup(QObject):
         for i, x in enumerate(senses):
             matched = match_translations(x, alternatives, tr[i], tr[n + i], tr[2 * n + i])
             word = matched[0] if matched else fallback_translation(x["pos"], alternatives, trans)
-            out.append({"pos": x["pos"], "word": word, "also": [w for w in matched if w != word][:6],
+            out.append({"pos": x["pos"], "word": word, "also": [w for w in matched if w != word][:6], "matched": matched,
                         "gloss": tr[i], "example": tr[n + i],
                         "hints": matched + [h.strip() for h in tr[2 * n + i].split(",")]})
         return out
@@ -240,9 +256,11 @@ class Lookup(QObject):
     def _sense_synonyms(self, gen: int, lang: str, index: int, sense: dict, src: str) -> None:
         data: dict = {}
         word = sense["word"]
+        alts: list[dict] = []
         try:
             if is_word_mode(word):
                 d = self._dictionary(word, src, lang)
+                alts = d["alternatives"]
                 picked = pick_synonyms(d.get("senses") or [], sense["pos"], sense.get("hints") or [])
                 if picked:
                     data["synonyms"] = [{"pos": "", "words": picked, "source": "google"}]
@@ -259,7 +277,15 @@ class Lookup(QObject):
             pass
         except Exception:  # noqa: BLE001 - a background job must not die silently
             log.exception("sense synonyms failed")
-        if not data.get("synonyms") and not data.pop("picked_none", False) and L.same(lang, "en"):
+        picked_none = data.pop("picked_none", False)
+        if not data.get("synonyms") and not data.get("note") and alts and not L.same(lang, "en"):
+            # Words that translate back into this meaning's other words (not the word itself,
+            # which every alternative translates back to). Nothing to go on: nothing shown.
+            hints = [h for h in sense.get("hints") or [] if h.strip().lower() != word.lower()]
+            words = similar_words(alts, [word, *(sense.get("also") or [])], sense["pos"], hints)
+            if words:
+                data["synonyms"] = [{"pos": "", "words": words, "source": "similar"}]
+        if not data.get("synonyms") and not picked_none and L.same(lang, "en"):
             words = self._datamuse(word)
             if words:
                 data["synonyms"] = [{"pos": "", "words": words, "source": "datamuse"}]
@@ -298,6 +324,18 @@ class Lookup(QObject):
         except LLMError as e:
             if self._alive(gen):
                 self.rewrites_failed.emit(gen, str(e))
+
+
+def _similar_per_sense(source_senses: list[dict], target_senses: list[dict], alternatives: list[dict], text: str) -> None:
+    """Meanings of the looked-up word with no synonyms get similar words: what the
+    translations matched to that meaning translate back to."""
+    for s, t in zip(source_senses, target_senses):
+        if s["synonyms"] or not t.get("matched"):
+            continue
+        matched = set(t["matched"])
+        words = similar_words([x for x in alternatives if x["word"] in matched], [text])
+        if words:
+            s["synonyms"] = [{"pos": "", "words": words, "source": "similar"}]
 
 
 def _word_info(d: dict, source: str) -> dict:

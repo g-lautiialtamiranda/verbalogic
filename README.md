@@ -3,7 +3,9 @@
 Select text in any Windows app, press **Ctrl+Alt+D**, and a popup shows:
 
 - the translation in your two languages (Spanish | English by default, + Portuguese on demand),
-- **synonyms** grouped by noun/verb/adjective, in both languages (real dictionary data, not AI),
+- **synonyms** grouped by noun/verb/adjective, in both languages (real dictionary data, not AI). Where Google has none in Spanish, **similar words** taken from its translations,
+- **pronunciation** of each word with one click,
+- **saved words and history**: star a word to keep it, and reopen any recent lookup,
 - other translations and **real example sentences**,
 - **every meaning of a word**, one at a time: step through them with the arrows, and the translation, definition, synonyms and example all follow the meaning you're on,
 - **"Other ways to say it"**: short, natural rewrites (casual / neutral / formal), with Spanish in both *vos* (Argentina) and neutral versions. This part uses a free AI model through OpenRouter and is optional.
@@ -50,6 +52,9 @@ git pull
 | Copy a translation | **Ctrl+1 / Ctrl+2 / Ctrl+3**, or the copy icon |
 | Copy a synonym or rewrite | Click it |
 | Look up a synonym | Double-click it |
+| Hear the pronunciation | Speaker icon, or **Ctrl+Shift+1 / 2 / 3** |
+| Save a word | Star icon, or **Ctrl+S** |
+| Reopen a saved word or a recent lookup | History icon, **Ctrl+H**, or tray → *Saved and recent lookups* |
 | Switch meaning (e.g. *bank*: river / money / tilt…) | **‹ ›** under the original word, or **Alt+← / Alt+→** |
 | See all meanings and jump to one | Click **Meaning 2 of 8 ▾**, or **Alt+↓** |
 | Add Portuguese | **+ PT** in the header |
@@ -68,7 +73,7 @@ Inside full-screen terminal apps (like Claude Code), Warp's selection sometimes 
 The key is stored in Windows Credential Manager, never in a file. Free models have daily limits, and repeat lookups are cached so they don't count twice. Free providers may log what you send, so don't use rewrites on confidential text (translations go to Google either way).
 
 ## Configure
-Everything lives in `%APPDATA%\VerbaLogic\config.toml` (tray → *Open config file*): shortcut, languages, theme, accent color, popup size, per-app copy keys, AI models and Spanish style. Changes apply when you save. A bad value falls back to its default, and you get a notification.
+Everything lives in `%APPDATA%\VerbaLogic\config.toml` (tray → *Open config file*): shortcut, languages, theme, accent color, popup size, per-app copy keys, AI models, Spanish style and history (on/off, how many recent lookups to keep). Changes apply when you save. A bad value falls back to its default, and you get a notification.
 
 ## Develop
 ```powershell
@@ -77,12 +82,12 @@ Everything lives in `%APPDATA%\VerbaLogic\config.toml` (tray → *Open config fi
 .venv\Scripts\python -m verbalogic --show "improve"   # open the popup with text, no hotkey
 ```
 
-Layout: `src/verbalogic/` — `hotkey.py` (Win32 RegisterHotKey), `capture.py` (copy + clipboard), `lookup.py` (orchestration + cache), `providers/` (Google, Datamuse, OpenAI-compatible LLM), `rewrites.py` + `prompts/rewrites.md` (prompt and anti-slop filter), `ui/` (popup, settings, theme).
+Layout: `src/verbalogic/` — `hotkey.py` (Win32 RegisterHotKey), `capture.py` (copy + clipboard), `lookup.py` (orchestration + cache), `providers/` (Google, Datamuse, pronunciation, OpenAI-compatible LLM), `history.py` (saved words and recent lookups), `rewrites.py` + `prompts/rewrites.md` (prompt and anti-slop filter), `ui/` (popup, settings, theme).
 
-Log file: `%APPDATA%\VerbaLogic\verbalogic.log`.
+Log file: `%APPDATA%\VerbaLogic\verbalogic.log`. Saved words and history are in `history.sqlite` in the same folder, and pronunciation clips are cached in `tts\`.
 
 ## Contributing
-Found a bug or have an idea? [Open an issue](https://github.com/g-lautiialtamiranda/verbalogic/issues/new/choose). Want to write the code yourself? See [CONTRIBUTING.md](CONTRIBUTING.md). The roadmap of planned and past ideas lives in [`suggestions/`](suggestions/README.md). The maintainer reviews every issue and pull request and decides what goes in.
+Found a bug or have an idea? [Open an issue](https://github.com/g-lautiialtamiranda/verbalogic/issues/new/choose). Want to write the code yourself? See [CONTRIBUTING.md](CONTRIBUTING.md). Open ideas live in [`suggestions/`](suggestions/README.md), and what has been built or decided, session by session, in [`record/`](record/README.md). The maintainer reviews every issue and pull request and decides what goes in.
 
 ## License
 [MIT](LICENSE)

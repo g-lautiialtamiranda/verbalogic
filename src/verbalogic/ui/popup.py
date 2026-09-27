@@ -1,9 +1,11 @@
 """The popup: source box on top, one column per language, status line at the bottom."""
 from __future__ import annotations
 
+import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QEvent, QRectF, Qt, QTimer
+from PySide6.QtCore import QEvent, QPoint, QRectF, Qt, QTimer, Signal
 from PySide6.QtGui import QColor, QCursor, QGuiApplication, QKeySequence, QPainter, QPainterPath, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QFrame, QHBoxLayout, QLabel, QMenu, QPlainTextEdit, QScrollArea, QToolButton, QVBoxLayout, QWidget,
@@ -13,7 +15,11 @@ from .. import config, credentials
 from .. import languages as L
 from .. import win32
 from ..lookup import is_word_mode, wants_rewrites
-from .widgets import ICON_CLOSE, ICON_PIN, ICON_SETTINGS, LanguageColumn, caps_label, clear_layout, icon_button
+from ..providers import speech
+from .widgets import (
+    ICON_CLOSE, ICON_HISTORY, ICON_PIN, ICON_SETTINGS, ICON_STAR, ICON_STAR_ON, LanguageColumn, caps_label,
+    clear_layout, icon_button,
+)
 
 if TYPE_CHECKING:
     from ..app import VerbaLogicApp
@@ -21,6 +27,8 @@ if TYPE_CHECKING:
 SHADOW = 18          # px of soft shadow around the card
 SETUP_HINTS = 3      # lookups that show "Set up rewrites" while there's no OpenRouter key
 EXTRA_COLUMN_W = 270  # how much wider the popup gets per extra language
+MENU_ITEMS = 15       # saved / recent lookups listed in the history menu
+_TAGS = re.compile(r"<[^>]+>")
 
 
 class SourceEdit(QPlainTextEdit):
@@ -39,6 +47,8 @@ class SourceEdit(QPlainTextEdit):
 
 
 class Popup(QWidget):
+    speech_failed = Signal(str)
+
     def __init__(self, app: "VerbaLogicApp"):
         super().__init__(None, Qt.FramelessWindowHint | Qt.Tool | Qt.WindowStaysOnTopHint)
         self.app = app
@@ -50,6 +60,10 @@ class Popup(QWidget):
         self._drag_from = None
         self._src = ""          # detected source language of the current lookup
         self._sense_i = 0       # meaning shown (0-based)
+        self._text = ""         # the text of the current lookup
+        self._translations: dict[str, str] = {}
+        self._speaker = ThreadPoolExecutor(1, thread_name_prefix="vl-speech")  # one clip at a time
+        self.speech_failed.connect(self.flash)
 
         outer = QVBoxLayout(self)
         outer.setContentsMargins(SHADOW, SHADOW - 6, SHADOW, SHADOW + 6)
@@ -81,12 +95,17 @@ class Popup(QWidget):
         self.extras_box.setSpacing(6)
         head.addLayout(self.extras_box)
         head.addSpacing(4)
+        self.history_btn = icon_button(ICON_HISTORY, "Saved and recent lookups (Ctrl+H)")
+        self.history_btn.clicked.connect(self.open_history)
+        self.star = icon_button(ICON_STAR, "Save this word (Ctrl+S)", checkable=True)
+        self.star.setEnabled(False)
+        self.star.toggled.connect(self._on_star)
         self.pin = icon_button(ICON_PIN, "Keep open when clicking elsewhere", checkable=True)
         settings = icon_button(ICON_SETTINGS, "Settings (Ctrl+,)")
         settings.clicked.connect(self.app.open_settings)
         close = icon_button(ICON_CLOSE, "Close (Esc)")
         close.clicked.connect(self.hide)
-        for b in (self.pin, settings, close):
+        for b in (self.history_btn, self.star, self.pin, settings, close):
             head.addWidget(b)
         v.addWidget(self.header)
 
@@ -112,7 +131,8 @@ class Popup(QWidget):
         self.status.setObjectName("footer")
         self.toast = QLabel("")
         self.toast.setObjectName("toast")
-        hint = QLabel("Enter translate · Alt+←/→/↓ meanings · Ctrl+1/2/3 copy · Esc close")
+        hint = QLabel("Enter translate · Alt+←/→/↓ meanings · Ctrl+1/2/3 copy · Ctrl+S save · Esc close")
+        hint.setToolTip("Ctrl+Shift+1/2/3 listen · Ctrl+H saved and recent lookups · Ctrl+, settings")
         hint.setObjectName("footer")
         foot.addWidget(self.status)
         foot.addSpacing(8)
@@ -126,6 +146,9 @@ class Popup(QWidget):
         QShortcut(QKeySequence("Ctrl+,"), self, activated=self.app.open_settings)
         for n in range(1, 5):
             QShortcut(QKeySequence(f"Ctrl+{n}"), self, activated=lambda n=n: self._copy_column(n - 1))
+            QShortcut(QKeySequence(f"Ctrl+Shift+{n}"), self, activated=lambda n=n: self._speak_column(n - 1))
+        QShortcut(QKeySequence("Ctrl+S"), self, activated=lambda: self.star.isEnabled() and self.star.toggle())
+        QShortcut(QKeySequence("Ctrl+H"), self, activated=self.open_history)
         QShortcut(QKeySequence("Alt+Left"), self, activated=lambda: self._step_sense(-1))
         QShortcut(QKeySequence("Alt+Right"), self, activated=lambda: self._step_sense(1))
         QShortcut(QKeySequence("Alt+Down"), self, activated=self._open_meanings)
@@ -174,7 +197,7 @@ class Popup(QWidget):
         clear_layout(self.columns_row)
         self._columns = {}
         for lang in langs:
-            col = LanguageColumn(lang, self.app.cfg["ui"], self.copy_text, self.lookup_word)
+            col = LanguageColumn(lang, self.app.cfg["ui"], self.copy_text, self.lookup_word, self.speak)
             col.nav.moved.connect(self._step_sense)
             col.nav.list_requested.connect(self._open_meanings)
             self._columns[lang] = col
@@ -225,6 +248,8 @@ class Popup(QWidget):
                 self.flash(note)
         else:
             self._gen = 0
+            self._text = ""
+            self._set_star(False, enabled=False)
             self.pill.hide()
             for col in self._columns.values():
                 col.reset(False, False)
@@ -240,6 +265,8 @@ class Popup(QWidget):
         rewrites_on = wants_rewrites(cfg, text)
         langs = list(self._columns)
         self._src, self._sense_i = "", 0
+        self._text, self._translations = text, {}
+        self._set_star(self.app.history.is_starred(text))
         for i, col in enumerate(self._columns.values()):
             col.reset(word, rewrites_on and i < 2)
         if not rewrites_on and cfg["rewrites"]["enabled"] and self._take_setup_hint():
@@ -286,6 +313,74 @@ class Popup(QWidget):
         if index < len(cols):
             self.copy_text(cols[index].main_text())
 
+    # --- pronunciation ---
+    def speak(self, text: str, lang: str) -> None:
+        self._speaker.submit(self._speak, text, lang)
+
+    def _speak(self, text: str, lang: str) -> None:
+        """Worker thread: download (once) and play; failures come back as a toast."""
+        try:
+            speech.play(speech.fetch(self.app.http, text, lang, config.app_dir() / "tts"))
+        except speech.SpeechError as e:
+            self.speech_failed.emit(str(e))
+        except Exception:  # noqa: BLE001 - never kill the worker
+            self.speech_failed.emit("Couldn't play the pronunciation.")
+
+    def _speak_column(self, index: int) -> None:
+        cols = list(self._columns.values())
+        if index < len(cols) and cols[index].can_speak():
+            self.speak(cols[index].main_text(), cols[index].lang)
+
+    # --- saved words and history ---
+    def _set_star(self, on: bool, enabled: bool = True) -> None:
+        self.star.blockSignals(True)
+        self.star.setChecked(on)
+        self.star.blockSignals(False)
+        self.star.setText(ICON_STAR_ON if on else ICON_STAR)
+        self.star.setEnabled(enabled)
+
+    def _on_star(self, on: bool) -> None:
+        if not self._text:
+            return
+        gloss, example = self._nav_column().current_meaning() if self._columns else ("", "")
+        self.app.history.set_star(self._text, on, self._src, self._translations, gloss, _TAGS.sub("", example))
+        self._set_star(on)
+        short = self._text if len(self._text) < 30 else self._text[:27] + "…"
+        self.flash(f"Saved “{short}”" if on else f"Removed “{short}” from saved")
+
+    def open_history(self) -> None:
+        """Saved words, then recent lookups. Picking one looks it up again (instant: it's cached)."""
+        h = self.app.history
+        saved = h.starred(MENU_ITEMS)
+        recent = [e for e in h.recent(MENU_ITEMS + len(saved)) if not e.starred][:MENU_ITEMS]
+        menu = QMenu(self)
+        menu.setObjectName("history")
+        for title, entries in (("SAVED", saved), ("RECENT", recent)):
+            if not entries:
+                continue
+            menu.addAction(title).setEnabled(False)
+            for e in entries:
+                text = " ".join(e.text.split())
+                text = text if len(text) <= 40 else text[:37].rstrip() + "…"
+                tr = " ".join(e.translation().split())
+                tr = tr if len(tr) <= 30 else tr[:27].rstrip() + "…"
+                act = menu.addAction(f"{text}   →  {tr}" if tr else text)
+                if e.gloss:
+                    act.setToolTip(e.gloss)
+                act.triggered.connect(lambda _=False, t=e.text: self.lookup_word(t))
+        if not saved and not recent:
+            menu.addAction("Nothing here yet. Your lookups will show up here.").setEnabled(False)
+        elif recent:
+            menu.addSeparator()
+            menu.addAction("Clear recent lookups", self._clear_recent)
+        menu.setToolTipsVisible(True)
+        btn = self.history_btn
+        menu.exec(btn.mapToGlobal(btn.rect().bottomRight()) - QPoint(menu.sizeHint().width(), 0))
+
+    def _clear_recent(self) -> None:
+        self.app.history.clear_recent()
+        self.flash("Recent lookups cleared. Saved words were kept.")
+
     # --- lookup signals ---
     def _on_detected(self, gen: int, src: str) -> None:
         if gen == self._gen:
@@ -295,6 +390,7 @@ class Popup(QWidget):
     def _on_translated(self, gen: int, lang: str, text: str, original: bool) -> None:
         if gen == self._gen and lang in self._columns:
             self._columns[lang].set_translation(text, original)
+            self._translations[lang] = text
 
     def _on_details(self, gen: int, lang: str, data: dict) -> None:
         if gen == self._gen and lang in self._columns:
@@ -392,6 +488,8 @@ class Popup(QWidget):
     def _on_timing(self, gen: int, ms: int) -> None:
         if gen == self._gen:
             self.status.setText(f"Translated in {ms} ms")
+            if self.app.cfg["history"]["enabled"]:
+                self.app.history.add(self._text, self._src, self._translations)
 
     # --- window behaviour ---
     def event(self, e):

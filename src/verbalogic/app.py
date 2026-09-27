@@ -17,6 +17,7 @@ from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 from . import config, credentials, startup
 from .cache import Cache
 from .capture import _OWN_PROCESSES, Capture, grab_selection
+from .history import History
 from .hotkey import HotkeyError, HotkeyListener
 from .keys import KeyCombo, parse_combo
 from .lookup import Lookup
@@ -45,6 +46,7 @@ class VerbaLogicApp(QObject):
         )
         self.cache = Cache(config.app_dir() / "cache.sqlite")
         self.lookup = Lookup(self.http, self.cache, self)
+        self.history = History(config.app_dir() / "history.sqlite", self.cfg["history"]["size"])
         self._apply_style()
         self.popup = Popup(self)
         self.settings: SettingsDialog | None = None
@@ -100,6 +102,8 @@ class VerbaLogicApp(QObject):
         menu = QMenu()
         self._open_action = QAction(f"Open VerbaLogic ({self._hotkey_label()})", menu)
         self._open_action.triggered.connect(lambda: self.popup.present(""))
+        history = QAction("Saved and recent lookups…", menu)
+        history.triggered.connect(self._open_history)
         settings = QAction("Settings…", menu)
         settings.triggered.connect(self.open_settings)
         open_file = QAction("Open config file", menu)
@@ -109,7 +113,7 @@ class VerbaLogicApp(QObject):
         self._startup_action.toggled.connect(lambda on: config.save({"startup": {"start_with_windows": on}}))
         quit_ = QAction("Quit", menu)
         quit_.triggered.connect(self.quit)
-        for a in (self._open_action, settings, open_file):
+        for a in (self._open_action, history, settings, open_file):
             menu.addAction(a)
         menu.addSeparator()
         menu.addAction(self._startup_action)
@@ -118,6 +122,10 @@ class VerbaLogicApp(QObject):
         self._menu = menu
         self.tray.setContextMenu(menu)
         self.tray.setToolTip(f"VerbaLogic: select text and press {self._hotkey_label()}")
+
+    def _open_history(self) -> None:
+        self.popup.present("")
+        QTimer.singleShot(0, self.popup.open_history)
 
     def _on_tray_activated(self, reason) -> None:
         if reason in (QSystemTrayIcon.Trigger, QSystemTrayIcon.DoubleClick):
@@ -173,6 +181,7 @@ class VerbaLogicApp(QObject):
     def reload_config(self) -> None:
         old_hotkey = self.cfg["hotkey"]["open"]
         self.cfg, warnings = config.load()
+        self.history.size = self.cfg["history"]["size"]
         self._apply_style()
         self.popup.rebuild()
         self.tray.setIcon(make_icon(self.cfg["ui"]["accent"]))

@@ -79,6 +79,8 @@ QToolButton#navLabel:hover { background: $hover; color: $text; }
 QMenu#meanings::item { padding: 6px 14px 6px 8px; }
 QMenu#meanings::item:checked { color: $accent_text; font-weight: 600; }
 QMenu#meanings::indicator { width: 0; }
+QMenu#history::item { padding: 6px 16px 6px 12px; }
+QMenu#history::item:disabled { color: $muted; font-size: ${font_xs}px; font-weight: 700; padding-top: 8px; }
 #sectionTitle {
     font-size: ${font_xs}px; font-weight: 700; color: $muted; letter-spacing: 1px;
     padding-top: 6px;

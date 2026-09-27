@@ -3,7 +3,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from verbalogic.providers.google_free import parse_dictionary
-from verbalogic.senses import fallback_translation, match_translations, pick_synonyms, synonyms_line
+from verbalogic.senses import fallback_translation, match_translations, pick_synonyms, similar_words, synonyms_line
 
 FIX = Path(__file__).parent / "fixtures"
 
@@ -64,3 +64,32 @@ def test_pick_synonyms_follows_the_meaning():
     assert pick_synonyms(pendiente, "noun", ["nada que ver"]) == []
     assert pick_synonyms(pendiente, "noun", ["alerta"]) == []          # wrong part of speech
     assert pick_synonyms([], "noun", ["subida"]) is None
+
+
+def test_similar_words_come_from_reverse_translations():
+    words = similar_words(BANCO["alternatives"], ["banco"])
+    assert words[:2] == ["orilla", "batería"]
+    assert "banco" not in words and "escaño" in words
+    assert len(words) == len(set(words))
+
+
+def test_similar_words_follow_one_meaning():
+    shoal = [a for a in BANCO["alternatives"] if a["word"] == "shoal"]
+    assert similar_words(shoal, ["banco"]) == ["cardumen", "banco de arena", "multitud"]
+
+
+def test_similar_words_with_hints_keep_only_that_meaning():
+    # translations of "orilla" back to Spanish: only those linked to "ribera" count
+    alts = [{"word": "shore", "pos": "noun", "reverse": ["orilla", "costa", "ribera"]},
+            {"word": "edge", "pos": "noun", "reverse": ["borde", "filo", "orilla"]},
+            {"word": "border", "pos": "verb", "reverse": ["bordear", "ribera"]}]
+    assert similar_words(alts, ["orilla"], "noun", ["ribera"]) == ["costa", "ribera"]
+    assert similar_words(alts, ["orilla"], "noun", []) == []
+
+
+def test_exclamation_and_interjection_are_the_same_part_of_speech():
+    hello = {"pos": "exclamation", "synonyms": ["hi", "hullo"]}
+    alts = [{"word": "¡Hola!", "pos": "interjection", "reverse": ["Hello!", "Hi!", "Hullo!"]},
+            {"word": "saludo", "pos": "noun", "reverse": ["greeting", "hi"]}]
+    assert match_translations(hello, alts) == ["¡Hola!"]  # "Hi!" counts as "hi"
+    assert similar_words(alts, ["hello"], "exclamation") == ["Hi!", "Hullo!"]  # not the noun's "greeting"

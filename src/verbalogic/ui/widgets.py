@@ -15,6 +15,10 @@ ICON_COPY = ""
 ICON_PIN = ""
 ICON_SETTINGS = ""
 ICON_CLOSE = ""
+ICON_SPEAK = ""      # Segoe Fluent Icons: Volume
+ICON_STAR = ""       # FavoriteStar
+ICON_STAR_ON = ""    # FavoriteStarFill
+ICON_HISTORY = ""    # History
 
 
 def caps_label(text: str, name: str) -> QLabel:
@@ -207,12 +211,14 @@ class MeaningNav(QWidget):
 class LanguageColumn(QFrame):
     """One language: main translation, other translations, synonyms, examples, rewrites."""
 
-    def __init__(self, lang: str, ui: dict, on_copy: Callable[[str], None], on_lookup: Callable[[str], None]):
+    def __init__(self, lang: str, ui: dict, on_copy: Callable[[str], None], on_lookup: Callable[[str], None],
+                 on_speak: Callable[[str, str], None] | None = None):
         super().__init__()
         self.lang = lang
         self.ui = ui
         self._copy = on_copy
         self._lookup = on_lookup
+        self._word_mode = False
         self.setObjectName("column")
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
@@ -226,11 +232,16 @@ class LanguageColumn(QFrame):
         self.badge = QLabel("original")
         self.badge.setObjectName("badge")
         self.badge.hide()
-        self.copy_btn = icon_button(ICON_COPY, "Copy")
+        self.speak_btn = icon_button(ICON_SPEAK, "Listen (Ctrl+Shift+number)")
+        self.speak_btn.hide()
+        if on_speak:
+            self.speak_btn.clicked.connect(lambda: self.main_text() and on_speak(self.main_text(), self.lang))
+        self.copy_btn = icon_button(ICON_COPY, "Copy (Ctrl+number)")
         self.copy_btn.clicked.connect(lambda: self._copy(self.main_text()))
         head.addWidget(self.name)
         head.addWidget(self.badge)
         head.addStretch(1)
+        head.addWidget(self.speak_btn)
         head.addWidget(self.copy_btn)
         v.addLayout(head)
 
@@ -264,9 +275,22 @@ class LanguageColumn(QFrame):
     def main_text(self) -> str:
         return self.main.property("value") or ""
 
+    def can_speak(self) -> bool:
+        return self._word_mode and bool(self.main_text())
+
+    def current_meaning(self) -> tuple[str, str]:
+        """(definition, example) of what's on screen: the chosen meaning, else the word's."""
+        if 0 <= self._sense_i < len(self._senses):
+            s = self._senses[self._sense_i]
+            return s["gloss"], s["example"]
+        examples = self._general.get("examples") or []
+        return self._general.get("definition", ""), (examples[0] if examples else "")
+
     # --- state ---
     def reset(self, word_mode: bool, rewrites_on: bool) -> None:
         self._set_main("…", muted=True)
+        self._word_mode = word_mode
+        self.speak_btn.hide()
         self.badge.hide()
         self.definition.hide()
         self.nav.hide()
@@ -290,9 +314,11 @@ class LanguageColumn(QFrame):
     def set_translation(self, text: str, is_original: bool) -> None:
         self._set_main(text)
         self.badge.setVisible(is_original)
+        self.speak_btn.setVisible(self._word_mode and bool(text))
 
     def set_error(self, text: str) -> None:
         self._set_main("")
+        self.speak_btn.hide()
         self.syns.clear()
         self.rewrites.clear()
         self.examples.message(text, "error")
@@ -324,7 +350,10 @@ class LanguageColumn(QFrame):
                 if budget <= 0:
                     break
             self._chips(self.syns, groups)
-            self.syns.title.setText("SYNONYMS" + (" · DATAMUSE" if synonyms[0].get("source") == "datamuse" else ""))
+            source = synonyms[0].get("source")
+            self.syns.title.setText("SIMILAR WORDS" if source == "similar"
+                                    else "SYNONYMS" + (" · DATAMUSE" if source == "datamuse" else ""))
+            self.syns.setToolTip("Other words Google translates the same way" if source == "similar" else "")
         elif data.get("note"):
             self.syns.message(data["note"])
         else:

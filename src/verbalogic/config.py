@@ -30,6 +30,7 @@ _INT_RANGES = {
     ("ui", "max_meanings"): (1, 20),
     ("rewrites", "count"): (1, 8),
     ("rewrites", "timeout_seconds"): (3, 120),
+    ("history", "size"): (10, 5000),
 }
 _CHOICES = {
     ("ui", "theme"): {"system", "light", "dark"},

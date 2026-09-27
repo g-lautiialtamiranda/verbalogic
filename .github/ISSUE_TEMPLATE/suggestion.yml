@@ -4,7 +4,7 @@ labels: ["needs-review"]
 body:
   - type: markdown
     attributes:
-      value: Check the [roadmap](https://github.com/g-lautiialtamiranda/verbalogic/blob/main/suggestions/README.md) first, since your idea might already be there. The maintainer reviews every suggestion and decides what gets built.
+      value: Check the [roadmap](https://github.com/g-lautiialtamiranda/verbalogic/blob/main/suggestions/README.md) and the [record](https://github.com/g-lautiialtamiranda/verbalogic/blob/main/record/README.md) first, since your idea might already be planned, built or decided against. The maintainer reviews every suggestion and decides what gets built.
   - type: textarea
     id: idea
     attributes:

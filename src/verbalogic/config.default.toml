@@ -66,5 +66,11 @@ spanish_variant = "both"
 only_for_sentences = false
 timeout_seconds = 25
 
+[history]
+# Recent lookups and saved words (star), kept only on this PC in history.sqlite.
+# Saved words are never removed automatically; "size" is how many recent lookups to keep.
+enabled = true
+size = 200
+
 [startup]
 start_with_windows = false
