@@ -2,7 +2,7 @@
 
 The VerbaLogic roadmap: **open** ideas for improving the app, one file each, grouped by type:
 
-- `frontend/`: Visuals and layout: how the popup looks and reads.
+- `frontend/`: Visuals and layout: how the popup looks and reads (none open right now).
 - `functional/`: Features and behaviour: what the app does.
 - `reliability/`: Data sources, errors, privacy, speed and tests.
 - `ideas/`: Bigger or later ideas, to talk through before building.
@@ -22,17 +22,13 @@ Please don't add files here. [Open an issue](https://github.com/g-lautiialtamira
 ## Index
 | ID | Suggestion | Type | Effort | Status |
 |---|---|---|---|---|
-| [F-05](frontend/F-05-dictionary-headword.md) | A headword like a printed dictionary | frontend | S | proposed |
-| [F-06](frontend/F-06-mica-backdrop.md) | Windows 11 Mica / Acrylic backdrop | frontend | M | proposed |
-| [F-07](frontend/F-07-formal-palette.md) | A more formal palette | frontend | S | proposed |
-| [F-08](frontend/F-08-calm-motion.md) | Calm motion and loading states | frontend | S | proposed |
-| [F-09](frontend/F-09-fewer-boxes.md) | Fewer boxes, more whitespace | frontend | M | proposed |
-| [F-10](frontend/F-10-brand-mark.md) | A proper logo and a README that shows the app | frontend | M | proposed |
-| [F-11](frontend/F-11-settings-redesign.md) | Settings like Windows 11 Settings | frontend | M | proposed |
 | [U-07](functional/U-07-language-detection.md) | Better language detection for ambiguous words | functional | S | proposed |
 | [U-08](functional/U-08-phonetics.md) | Phonetic transcription for English words | functional | S | proposed |
 | [U-09](functional/U-09-register-labels.md) | Formal / informal labels on synonyms | functional | S | proposed |
 | [U-10](functional/U-10-compact-bubble.md) | Compact bubble for single words | functional | M | proposed |
+| [U-11](functional/U-11-everyday-expressions.md) | Everyday expressions, idioms and metaphors | functional | M | proposed |
+| [U-12](functional/U-12-softer-euphemisms.md) | Softer ways to say it (euphemisms and tactful phrasing) | functional | S | proposed |
+| [U-13](functional/U-13-everyday-sentences.md) | Real everyday sentences (free, no key) | functional | S | proposed |
 | [R-01](reliability/R-01-endpoint-fallback.md) | Second dictionary endpoint as a fallback | reliability | S | proposed |
 | [R-02](reliability/R-02-backoff-state.md) | Smarter waiting after a Google limit | reliability | S | proposed |
 | [R-03](reliability/R-03-private-log.md) | Stop writing looked-up text to the log | reliability | S | proposed |

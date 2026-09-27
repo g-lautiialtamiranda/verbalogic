@@ -45,3 +45,12 @@ def test_translation_skips_the_original_column():
     h = History(None)
     h.add("bank", "en", {"en": "bank", "es": "banco"})
     assert h.recent()[0].translation() == "banco"
+
+
+def test_counts_saved_and_recent():
+    h = History(None)
+    assert h.counts() == (0, 0)
+    for w in ("a", "b", "c"):
+        h.add(w, "en", {})
+    h.set_star("b", True)
+    assert h.counts() == (1, 2)

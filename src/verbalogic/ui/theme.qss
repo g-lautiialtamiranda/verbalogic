@@ -1,6 +1,8 @@
-/* VerbaLogic theme. $names are filled in from ui/theme.py (light/dark palette + accent).
+/* VerbaLogic theme. $names are filled in from ui/theme.py (light/dark/paper palette + accent).
    Spaced capitals (#brand, #langName, #sectionTitle) use whole-pixel spacing, and caps_label()
-   turns kerning off for them: at small bold sizes kerning pushed "OT" into each other. */
+   turns kerning off for them: at small bold sizes kerning pushed "OT" into each other.
+   One set of radii: 16 card, 10 inner surfaces, 8 chips and buttons. Spacing on an 8-px grid.
+   The accent is kept for selection, focus, the active meaning and checked states. */
 
 * {
     font-family: "Segoe UI Variable Text", "Segoe UI";
@@ -13,12 +15,17 @@
     border: 1px solid $border;
     border-radius: 16px;
 }
+/* Acrylic on: Windows draws the tinted blur, the rounded corners and the shadow. The alpha of 2
+   (not 0) keeps the card clickable: clicks on fully transparent pixels go to the window behind. */
+#card[acrylic="true"] { background: rgba(128, 128, 128, 2); border: none; border-radius: 0; }
+/* Hairlines fade into the blur: draw them a step stronger. */
+#card[acrylic="true"] #divider { background: $border_strong; }
+#card[acrylic="true"] QPushButton#chip[kind="alt"], #card[acrylic="true"] QToolButton#toggle { border-color: $border_strong; }
 
 #brand { font-weight: 600; font-size: ${font_sm}px; color: $muted; letter-spacing: 1px; }
-#brandDot { background: $accent; border-radius: 4px; min-width: 8px; max-width: 8px; min-height: 8px; max-height: 8px; }
 
 #pill {
-    background: $accent_soft; color: $accent_text; border-radius: 10px;
+    background: $hover; color: $text_soft; border-radius: 8px;
     padding: 2px 10px; font-size: ${font_sm}px; font-weight: 600;
 }
 
@@ -33,14 +40,14 @@ QToolButton#icon:checked { background: $accent_soft; color: $accent_text; }
 
 QToolButton#toggle {
     font-size: ${font_sm}px; font-weight: 600; color: $muted;
-    background: transparent; border: 1px solid $border; border-radius: 10px;
+    background: transparent; border: 1px solid $border; border-radius: 8px;
     padding: 2px 9px;
 }
-QToolButton#toggle:hover { border-color: $accent; color: $text; }
+QToolButton#toggle:hover { background: $hover; color: $text; }
 QToolButton#toggle:checked { background: $accent_soft; border-color: $accent; color: $accent_text; }
 
 QPlainTextEdit#source {
-    background: $surface; border: 1px solid $border; border-radius: 12px;
+    background: $surface; border: 1px solid transparent; border-radius: 10px;
     padding: 8px 10px; font-size: ${font_lg}px;
     selection-background-color: $accent; selection-color: #ffffff;
 }
@@ -53,24 +60,27 @@ QScrollBar::handle:vertical:hover { background: $muted; }
 QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
 QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical { background: transparent; }
 
-#column {
-    background: $surface; border: 1px solid $border; border-radius: 14px;
-}
-#langName { font-weight: 700; font-size: ${font_sm}px; color: $muted; letter-spacing: 1px; }
+#column { background: transparent; border: none; }
+#divider { background: $border; min-width: 1px; max-width: 1px; }
+#langName { font-weight: 600; font-size: ${font_xs}px; color: $muted; letter-spacing: 1px; }
 #badge {
     background: $hover; color: $muted; border-radius: 8px;
     padding: 1px 8px; font-size: ${font_xs}px;
 }
 #main { font-size: ${font_xl}px; font-weight: 600; color: $text; }
-#main[muted="true"] { color: $muted; }
-#definition { color: $muted; font-style: italic; }
+#main[word="true"] {
+    font-family: "Sitka Heading Semibold", "Sitka Heading", "Sitka", Georgia, serif;
+    font-size: ${font_head}px; font-weight: 600;
+}
+#headPos { font-size: ${font_sm}px; color: $muted; font-style: italic; }
+#definition { color: $text_soft; }
 QToolButton#navArrow {
     font-size: ${font_lg}px; font-weight: 700; color: $accent_text;
     background: $accent_soft; border: none; border-radius: 8px;
     min-width: 26px; max-width: 26px; min-height: 22px; padding-bottom: 2px;
 }
 QToolButton#navArrow:hover { background: $accent; color: #ffffff; }
-QToolButton#navArrow:disabled { background: $hover; color: $border; }
+QToolButton#navArrow:disabled { background: transparent; color: $border; }
 QToolButton#navLabel {
     font-size: ${font_sm}px; font-weight: 600; color: $text_soft;
     background: transparent; border: none; border-radius: 8px; padding: 2px 6px;
@@ -80,52 +90,75 @@ QMenu#meanings::item { padding: 6px 14px 6px 8px; }
 QMenu#meanings::item:checked { color: $accent_text; font-weight: 600; }
 QMenu#meanings::indicator { width: 0; }
 QMenu#history::item { padding: 6px 16px 6px 12px; }
-QMenu#history::item:disabled { color: $muted; font-size: ${font_xs}px; font-weight: 700; padding-top: 8px; }
+QMenu#history::item:disabled { color: $muted; font-size: ${font_xs}px; font-weight: 600; padding-top: 8px; }
 #sectionTitle {
-    font-size: ${font_xs}px; font-weight: 700; color: $muted; letter-spacing: 1px;
-    padding-top: 6px;
+    font-size: ${font_xs}px; font-weight: 600; color: $muted; letter-spacing: 1px;
 }
 #pos { font-size: ${font_xs}px; color: $muted; font-style: italic; }
 #muted { color: $muted; }
 #error { color: $error; }
 
 QPushButton#chip {
-    background: $chip; color: $text; border: 1px solid transparent; border-radius: 11px;
+    background: $chip; color: $text; border: 1px solid transparent; border-radius: 8px;
     padding: 3px 10px; font-size: ${font_sm}px;
 }
-QPushButton#chip:hover { border-color: $accent; background: $accent_soft; }
+QPushButton#chip:hover { background: $hover; border-color: $border_strong; }
 QPushButton#chip[kind="alt"] { background: transparent; border: 1px solid $border; }
-QPushButton#chip[kind="alt"]:hover { border-color: $accent; }
+QPushButton#chip[kind="alt"]:hover { background: $hover; border-color: $border_strong; }
 
 #example { color: $text_soft; }
 
-#rewrite {
-    background: $bg; border: 1px solid $border; border-radius: 10px;
-}
-#rewrite:hover { border-color: $accent; }
+#rewrite { background: transparent; border: none; border-top: 1px solid $border; border-radius: 0; }
+#rewrite[first="true"] { border-top: none; }
+#rewrite:hover { background: $hover; border-radius: 8px; border-top-color: transparent; }
 #tone {
-    font-size: ${font_xs}px; font-weight: 700; color: $accent_text;
-    background: $accent_soft; border-radius: 6px; padding: 1px 6px;
+    font-size: ${font_xs}px; font-weight: 600; color: $muted;
+    background: transparent; padding: 1px 0; min-width: 52px;
 }
 #variant { font-size: ${font_xs}px; color: $muted; min-width: 48px; }
 #rewriteText { color: $text; }
 
+/* Loading placeholders (F-08) */
+#skeleton { background: $chip; border-radius: 5px; }
+
 #footer { color: $muted; font-size: ${font_xs}px; }
 #toast { color: $accent_text; font-size: ${font_xs}px; font-weight: 600; }
 
-/* Settings window */
+/* Settings window: sidebar + pages of grouped rows, like Windows 11 Settings */
 QDialog#settings { background: $bg; }
 QDialog#settings QLabel#hint { color: $muted; font-size: ${font_sm}px; }
 QDialog#settings QLabel#ok { color: $ok; font-size: ${font_sm}px; }
 QDialog#settings QLabel#bad { color: $error; font-size: ${font_sm}px; }
-QTabWidget::pane { border: 1px solid $border; border-radius: 10px; background: $surface; top: -1px; }
-QTabBar::tab { background: transparent; color: $muted; padding: 8px 14px; border: none; }
-QTabBar::tab:selected { color: $text; border-bottom: 2px solid $accent; }
+QListWidget#nav { background: transparent; border: none; outline: 0; }
+QListWidget#nav::item { padding: 8px 12px; margin: 1px 0; border-radius: 8px; color: $text_soft; border-left: 3px solid transparent; }
+QListWidget#nav::item:hover { background: $hover; }
+QListWidget#nav::item:selected { background: $hover; color: $text; border-left: 3px solid $accent; }
+#pageTitle { font-size: ${font_xl}px; font-weight: 600; padding-bottom: 4px; }
+QScrollArea#page, #pageBody { background: transparent; border: none; }
+#groupTitle { font-size: ${font_sm}px; font-weight: 600; color: $text_soft; }
+#group { background: $surface; border: 1px solid $border; border-radius: 10px; }
+#row { background: transparent; }
+#rowTitle { color: $text; }
+#rowDesc { color: $muted; font-size: ${font_sm}px; }
+#rowLine { background: $border; min-height: 1px; max-height: 1px; }
+QToolButton#swatch {
+    border: 2px solid $bg; border-radius: 13px;
+    min-width: 22px; max-width: 22px; min-height: 22px; max-height: 22px;
+}
+QToolButton#swatch:checked { border: 2px solid $text; }
+#previewBox { background: $surface; border: 1px solid $border; border-radius: 10px; }
 QLineEdit, QComboBox, QSpinBox, QKeySequenceEdit, QPlainTextEdit#models {
     background: $bg; border: 1px solid $border; border-radius: 8px; padding: 5px 8px;
     selection-background-color: $accent;
 }
 QLineEdit:focus, QComboBox:focus, QSpinBox:focus, QPlainTextEdit#models:focus { border-color: $accent; }
+QComboBox::drop-down { border: none; width: 24px; }
+QComboBox::down-arrow { image: url("$chevron_down_svg"); width: 10px; height: 10px; }
+QSpinBox { padding-right: 22px; }
+QSpinBox::up-button, QSpinBox::down-button { border: none; background: transparent; width: 20px; }
+QSpinBox::up-button:hover, QSpinBox::down-button:hover { background: $hover; border-radius: 4px; }
+QSpinBox::up-arrow { image: url("$chevron_up_svg"); width: 10px; height: 10px; }
+QSpinBox::down-arrow { image: url("$chevron_down_svg"); width: 10px; height: 10px; }
 QComboBox QAbstractItemView { background: $bg; border: 1px solid $border; selection-background-color: $accent_soft; selection-color: $text; }
 QPushButton#primary {
     background: $accent; color: #ffffff; border: none; border-radius: 8px; padding: 7px 18px; font-weight: 600;
@@ -134,13 +167,13 @@ QPushButton#primary:hover { background: $accent_hover; }
 QPushButton#secondary {
     background: transparent; border: 1px solid $border; border-radius: 8px; padding: 6px 14px;
 }
-QPushButton#secondary:hover { border-color: $accent; }
+QPushButton#secondary:hover { background: $hover; border-color: $border_strong; }
 QCheckBox { spacing: 8px; }
-QCheckBox::indicator { width: 16px; height: 16px; border-radius: 4px; border: 1px solid $border; background: $bg; }
+QCheckBox::indicator { width: 16px; height: 16px; border-radius: 4px; border: 1px solid $border_strong; background: $bg; }
 QCheckBox::indicator:checked { background: $accent; border-color: $accent; image: url("$check_svg"); }
 
 QMenu { background: $bg; border: 1px solid $border; border-radius: 8px; padding: 4px; }
 QMenu::item { padding: 6px 18px; border-radius: 6px; }
-QMenu::item:selected { background: $accent_soft; }
+QMenu::item:selected { background: $hover; }
 QMenu::separator { height: 1px; background: $border; margin: 4px 8px; }
 QToolTip { background: $bg; color: $text; border: 1px solid $border; padding: 4px 8px; border-radius: 6px; }

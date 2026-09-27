@@ -11,7 +11,7 @@ from pathlib import Path
 
 import httpx
 from PySide6.QtCore import QFileSystemWatcher, QObject, Qt, QTimer, Signal
-from PySide6.QtGui import QAction, QGuiApplication
+from PySide6.QtGui import QAction, QColor, QGuiApplication, QPalette
 from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
@@ -24,10 +24,10 @@ from .keys import KeyCombo, parse_combo
 from .lookup import Lookup
 from .providers.llm import ChatClient, LLMError
 from .rewrites import build_prompt, parse_rewrites
-from .ui.icon import make_icon, make_pixmap
+from .ui.icon import ICON_VERSION, make_icon, write_ico
 from .ui.popup import Popup
 from .ui.settings import SettingsDialog
-from .ui.theme import stylesheet
+from .ui.theme import icon_accent, palette, stylesheet
 
 USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36"
 INSTANCE_KEY = f"VerbaLogic-{os.environ.get('USERNAME', 'user')}"
@@ -51,11 +51,14 @@ class VerbaLogicApp(QObject):
         self._apply_style()
         self.popup = Popup(self)
         self.settings: SettingsDialog | None = None
+        self._manage_shortcuts = with_hotkey  # a real run, not a test or --show: keep the shortcuts' icon current
+        self._shortcut_icon: Path | None = None  # the .ico the shortcuts were last pointed at (this run)
 
-        self.tray = QSystemTrayIcon(make_icon(self.cfg["ui"]["accent"]), self)
+        self.tray = QSystemTrayIcon(make_icon(icon_accent(self.cfg["ui"])), self)
         self.tray.activated.connect(self._on_tray_activated)
         self._build_tray_menu()
         self.tray.show()
+        self._refresh_icons()
 
         self.hotkeys = HotkeyListener(self._on_hotkey)
         self.captured.connect(self._on_captured)
@@ -69,23 +72,45 @@ class VerbaLogicApp(QObject):
 
         self._sync_startup()
         threading.Thread(target=self._prewarm, daemon=True).start()
-        if with_hotkey:  # a real run, not a test: make sure VerbaLogic is in the Start menu
-            icon = self._icon_file()
-            threading.Thread(target=startup.ensure_menu_shortcut, args=(icon,), daemon=True).start()
         for w in warnings:
             self.notify("Config problem", w, warn=True)
         self._first_run_hint()
 
     # --- setup helpers ---
     def _icon_file(self) -> Path:
-        """The app icon as an .ico for Windows shortcuts (made once, on the UI thread)."""
-        path = config.app_dir() / "verbalogic.ico"
+        """The mark as an .ico for Windows shortcuts (drawn on the UI thread). Its name carries the
+        design version and the accent: Windows caches icons by path, so a new colour needs a new file."""
+        accent = icon_accent(self.cfg["ui"])
+        path = config.app_dir() / f"verbalogic-v{ICON_VERSION}-{accent.lstrip('#').lower()}.ico"
         if not path.exists():
-            make_pixmap(self.cfg["ui"]["accent"], 256).save(str(path), "ICO")
+            write_ico(accent, path)
         return path
+
+    def _refresh_icons(self) -> None:
+        """Tray, windows and every VerbaLogic shortcut (Start menu, Startup, a taskbar pin) in the
+        current accent colour. Called at start and after each config change."""
+        icon = make_icon(icon_accent(self.cfg["ui"]))
+        self.tray.setIcon(icon)
+        self.qapp.setWindowIcon(icon)
+        if not self._manage_shortcuts:
+            return
+        path = self._icon_file()
+        if path == self._shortcut_icon:
+            return
+        self._shortcut_icon = path
+
+        def update() -> None:  # PowerShell takes a second: keep it off the UI thread
+            startup.ensure_menu_shortcut(path)
+            if not startup.update_icons(path):
+                logging.warning("Couldn't update the shortcut icons.")
+
+        threading.Thread(target=update, daemon=True).start()
 
     def _apply_style(self) -> None:
         self.qapp.setStyleSheet(stylesheet(self.cfg["ui"]))
+        pal = self.qapp.palette()  # links in labels ignore QSS: colour them through the palette
+        pal.setColor(QPalette.Link, QColor(palette(self.cfg["ui"])["accent_text"]))
+        self.qapp.setPalette(pal)
 
     def _prewarm(self) -> None:
         """Open the TLS connections now so the first lookup is fast."""
@@ -175,7 +200,7 @@ class VerbaLogicApp(QObject):
         self.popup.hide()
         self.hotkeys.unregister()  # so the shortcut can be recorded instead of firing
         self.settings = SettingsDialog(self)
-        self.settings.setWindowIcon(make_icon(self.cfg["ui"]["accent"]))
+        self.settings.setWindowIcon(make_icon(icon_accent(self.cfg["ui"])))
         self.settings.finished.connect(lambda _: self._register_hotkey())
         if tab:
             self.settings.show_tab(tab)
@@ -195,7 +220,7 @@ class VerbaLogicApp(QObject):
         self.history.size = self.cfg["history"]["size"]
         self._apply_style()
         self.popup.rebuild()
-        self.tray.setIcon(make_icon(self.cfg["ui"]["accent"]))
+        self._refresh_icons()
         self._build_tray_menu()
         dialog_open = self.settings is not None and self.settings.isVisible()
         if self.cfg["hotkey"]["open"] != old_hotkey and not dialog_open and self.hotkeys.is_alive():
@@ -258,6 +283,7 @@ def main() -> None:
     parser.add_argument("--show", metavar="TEXT", help="open the popup with this text (for testing)")
     parser.add_argument("--screenshot", metavar="PNG", help="with --show: save a screenshot after a few seconds and quit")
     parser.add_argument("--wait", type=float, default=5.0, help="seconds before the screenshot")
+    parser.add_argument("--theme", choices=["light", "dark", "paper"], help="with --show: use this theme (not saved)")
     args = parser.parse_args()
 
     _setup_logging()
@@ -274,7 +300,13 @@ def main() -> None:
     if not dev and _already_running():
         return
     app = VerbaLogicApp(qapp, with_hotkey=not dev)
-    qapp.setWindowIcon(make_icon(app.cfg["ui"]["accent"]))
+    if dev and args.theme:
+        app.cfg["ui"]["theme"] = args.theme
+        app._apply_style()
+        app.popup.rebuild()
+    if args.screenshot:  # grab() can't see the acrylic backdrop: use the solid card
+        app.cfg["ui"]["backdrop"] = "none"
+        app.popup.apply_backdrop()
 
     if not dev:
         server = QLocalServer(app)

@@ -41,8 +41,9 @@ default = "ctrl+c"
 "putty.exe" = "none"
 
 [ui]
-theme = "system"          # system | light | dark
-accent = "#6C5CE7"
+theme = "system"          # system | light | dark | paper (warm off-white)
+accent = "#2F4A7A"        # ink blue. Presets: #1F6B66 deep teal, #7A2E34 oxblood, #4A4F57 graphite
+backdrop = "acrylic"      # acrylic (Windows 11: the desktop shows through, softly blurred) | none
 width = 820
 height = 560
 font_size = 14

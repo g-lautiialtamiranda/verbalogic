@@ -2,6 +2,8 @@
 
 Tries the configured models in order. If none of them exists anymore (free models come and
 go), it asks OpenRouter which free models are listed today and tries those.
+On OpenRouter only free models (ids ending in ":free") are ever called, so a typo or a pasted
+paid model name can't spend credits.
 """
 from __future__ import annotations
 
@@ -33,11 +35,21 @@ def extract_json(text: str) -> dict:
     return json.loads(text[start : end + 1])
 
 
+def is_openrouter(base_url: str) -> bool:
+    return "openrouter.ai" in base_url.lower()
+
+
+def is_free(model: str) -> bool:
+    return model.strip().endswith(":free")
+
+
 class ChatClient:
     def __init__(self, client: httpx.Client, base_url: str, models: list[str], api_key: str | None, timeout: float):
         self.client = client
         self.base_url = base_url.rstrip("/")
         self.models = list(models)
+        if is_openrouter(self.base_url):
+            self.models = [m for m in self.models if is_free(m)]  # empty: falls through to discovery
         self.api_key = api_key
         self.timeout = timeout
 

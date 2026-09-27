@@ -4,12 +4,14 @@ from __future__ import annotations
 import html
 from typing import Callable
 
-from PySide6.QtCore import QPoint, QRect, QSize, Qt, Signal
+from PySide6.QtCore import QEasingCurve, QPoint, QPropertyAnimation, QRect, QSize, Qt, Signal
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QLayout, QPushButton, QSizePolicy, QToolButton, QVBoxLayout, QWidget,
+    QFrame, QGraphicsOpacityEffect, QHBoxLayout, QLabel, QLayout, QPushButton, QSizePolicy, QToolButton,
+    QVBoxLayout, QWidget,
 )
 
 from .. import languages as L
+from .. import win32
 
 ICON_COPY = ""
 ICON_PIN = ""
@@ -40,6 +42,56 @@ def icon_button(glyph: str, tip: str, checkable: bool = False) -> QToolButton:
     b.setCursor(Qt.PointingHandCursor)
     b.setFocusPolicy(Qt.NoFocus)
     return b
+
+
+def fade_in(widget: QWidget, start: float = 0.4, ms: int = 150) -> None:
+    """A short fade so it's clear what changed. The effect is removed at the end: while a
+    QGraphicsEffect is on, the whole column is re-rendered offscreen, which slows scrolling."""
+    if not win32.animations_enabled():
+        return
+    effect = QGraphicsOpacityEffect(widget)
+    effect.setOpacity(start)
+    widget.setGraphicsEffect(effect)
+    anim = QPropertyAnimation(effect, b"opacity", widget)
+    anim.setDuration(ms)
+    anim.setStartValue(start)
+    anim.setEndValue(1.0)
+    anim.setEasingCurve(QEasingCurve.OutCubic)
+    anim.finished.connect(lambda: widget.graphicsEffect() is effect and widget.setGraphicsEffect(None))
+    anim.start(QPropertyAnimation.DeleteWhenStopped)
+
+
+class Skeleton(QWidget):
+    """Grey placeholder bars shown while results load, so the layout doesn't jump.
+    chips: a row of chip-sized bars (px widths). lines: text lines as fractions of the width."""
+
+    def __init__(self, chips: tuple[int, ...] = (), lines: tuple[float, ...] = (), height: int = 12):
+        super().__init__()
+        v = QVBoxLayout(self)
+        v.setContentsMargins(0, 2, 0, 2)
+        v.setSpacing(8)
+        if chips:
+            row = QHBoxLayout()
+            row.setSpacing(6)
+            for w in chips:
+                row.addWidget(self._bar(height, w))
+            row.addStretch(1)
+            v.addLayout(row)
+        for frac in lines:
+            row = QHBoxLayout()
+            row.setSpacing(0)
+            row.addWidget(self._bar(height), int(frac * 100))
+            row.addStretch(100 - int(frac * 100))
+            v.addLayout(row)
+
+    @staticmethod
+    def _bar(height: int, width: int = 0) -> QFrame:
+        bar = QFrame()
+        bar.setObjectName("skeleton")
+        bar.setFixedHeight(height)
+        if width:
+            bar.setFixedWidth(width)
+        return bar
 
 
 class FlowLayout(QLayout):
@@ -146,18 +198,23 @@ class Section(QWidget):
     def __init__(self, title: str):
         super().__init__()
         v = QVBoxLayout(self)
-        v.setContentsMargins(0, 0, 0, 0)
-        v.setSpacing(6)
+        v.setContentsMargins(0, 8, 0, 0)  # here, not as QSS padding: that shifted the title right
+        v.setSpacing(8)
         self.title = caps_label(title.upper(), "sectionTitle")
         v.addWidget(self.title)
         self.body = QVBoxLayout()
-        self.body.setSpacing(6)
+        self.body.setSpacing(8)
         v.addLayout(self.body)
         self.hide()
 
     def clear(self) -> None:
         clear_layout(self.body)
         self.hide()
+
+    def loading(self, placeholder: QWidget) -> None:
+        self.clear()
+        self.body.addWidget(placeholder)
+        self.show()
 
     def message(self, text: str, name: str = "muted") -> None:
         self.clear()
@@ -169,7 +226,7 @@ class Section(QWidget):
 
 
 class MeaningNav(QWidget):
-    """‹  Meaning 2 of 5 · noun ▾  › — steps through a word's meanings; the label opens a list."""
+    """‹  Meaning 2 of 5 ▾  › — steps through a word's meanings; the label opens a list."""
     moved = Signal(int)  # -1 / +1
     list_requested = Signal()
 
@@ -202,8 +259,8 @@ class MeaningNav(QWidget):
         b.clicked.connect(lambda: self.moved.emit(step))
         return b
 
-    def set_state(self, index: int, count: int, pos: str) -> None:
-        self.label.setText(f"Meaning {index + 1} of {count}" + (f" · {pos}" if pos else "") + "  ▾")
+    def set_state(self, index: int, count: int) -> None:
+        self.label.setText(f"Meaning {index + 1} of {count}  ▾")
         self.prev.setEnabled(index > 0)
         self.next.setEnabled(index < count - 1)
 
@@ -223,7 +280,7 @@ class LanguageColumn(QFrame):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Preferred)
 
         v = QVBoxLayout(self)
-        v.setContentsMargins(16, 12, 14, 16)
+        v.setContentsMargins(0, 0, 0, 8)  # the popup sets the sides: no box, just a divider between columns
         v.setSpacing(8)
 
         head = QHBoxLayout()
@@ -250,6 +307,15 @@ class LanguageColumn(QFrame):
         self.main.setWordWrap(True)
         self.main.setTextInteractionFlags(Qt.TextSelectableByMouse)
         v.addWidget(self.main)
+        self.main_skeleton = Skeleton(lines=(0.55,), height=22)
+        self.main_skeleton.hide()
+        v.addWidget(self.main_skeleton)
+
+        # Like a printed dictionary: the part of speech in small italics right under the headword.
+        self.head_pos = QLabel("")
+        self.head_pos.setObjectName("headPos")
+        self.head_pos.hide()
+        v.addWidget(self.head_pos)
 
         self.nav = MeaningNav()
         v.addWidget(self.nav)
@@ -287,12 +353,16 @@ class LanguageColumn(QFrame):
         return self._general.get("definition", ""), (examples[0] if examples else "")
 
     # --- state ---
-    def reset(self, word_mode: bool, rewrites_on: bool) -> None:
-        self._set_main("…", muted=True)
+    def reset(self, word_mode: bool, rewrites_on: bool, loading: bool = True) -> None:
         self._word_mode = word_mode
+        self._set_main("")
+        if loading:
+            self.main.hide()
+            self.main_skeleton.show()
         self.speak_btn.hide()
         self.badge.hide()
         self.definition.hide()
+        self.head_pos.hide()
         self.nav.hide()
         self._senses, self._sense_syns, self._sense_i = [], {}, -1
         self._general: dict = {}
@@ -300,14 +370,16 @@ class LanguageColumn(QFrame):
         for s in (self.alts, self.syns, self.examples, self.rewrites):
             s.clear()
         if word_mode:
-            self.syns.message("Looking up synonyms…")
+            self.syns.loading(Skeleton(chips=(58, 74, 50, 66, 44)))
         if rewrites_on:
-            self.rewrites.message("Thinking of natural options…")
+            self.rewrites.loading(Skeleton(lines=(0.9, 0.75, 0.82)))
 
-    def _set_main(self, text: str, muted: bool = False) -> None:
+    def _set_main(self, text: str) -> None:
+        self.main_skeleton.hide()
+        self.main.show()
         self.main.setText(text)
-        self.main.setProperty("value", "" if muted else text)
-        self.main.setProperty("muted", muted)
+        self.main.setProperty("value", text)
+        self.main.setProperty("word", self._word_mode)  # serif headword for words only
         self.main.style().unpolish(self.main)
         self.main.style().polish(self.main)
 
@@ -319,6 +391,7 @@ class LanguageColumn(QFrame):
     def set_error(self, text: str) -> None:
         self._set_main("")
         self.speak_btn.hide()
+        self.head_pos.hide()
         self.syns.clear()
         self.rewrites.clear()
         self.examples.message(text, "error")
@@ -390,6 +463,7 @@ class LanguageColumn(QFrame):
             return None
         self._sense_i = index
         s = self._senses[index]
+        self._set_pos(s["pos"])
         self.definition.setText(s["gloss"])
         self.definition.setVisible(bool(s["gloss"]))
         self._show_examples([html.escape(s["example"])] if s["example"] else [])  # plain text; rich label
@@ -404,8 +478,12 @@ class LanguageColumn(QFrame):
         if index in self._sense_syns:
             self.set_sense_synonyms(index, self._sense_syns[index])
             return None
-        self.syns.message("Looking up synonyms…")
+        self.syns.loading(Skeleton(chips=(58, 74, 50, 66)))
         return s
+
+    def _set_pos(self, pos: str) -> None:
+        self.head_pos.setText(pos)
+        self.head_pos.setVisible(self._word_mode and bool(pos))
 
     def set_sense_synonyms(self, index: int, data: dict) -> None:
         self._sense_syns[index] = data
@@ -457,11 +535,12 @@ class LanguageColumn(QFrame):
         self.rewrites.clear()
         if not items:
             return
-        for it in items:
+        for n, it in enumerate(items):
             row = QFrame()
             row.setObjectName("rewrite")
+            row.setProperty("first", n == 0)  # hairlines between rows, none above the first
             h = QHBoxLayout(row)
-            h.setContentsMargins(10, 8, 10, 8)
+            h.setContentsMargins(8, 8, 8, 8)
             h.setSpacing(10)
             tone = QLabel(it["tone"])
             tone.setObjectName("tone")

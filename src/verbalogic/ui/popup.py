@@ -5,7 +5,9 @@ import re
 from concurrent.futures import ThreadPoolExecutor
 from typing import TYPE_CHECKING
 
-from PySide6.QtCore import QEvent, QPoint, QRectF, Qt, QTimer, Signal
+from PySide6.QtCore import (
+    QEasingCurve, QEvent, QParallelAnimationGroup, QPoint, QPropertyAnimation, QRectF, Qt, QTimer, Signal,
+)
 from PySide6.QtGui import QColor, QCursor, QGuiApplication, QKeySequence, QPainter, QPainterPath, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QFrame, QHBoxLayout, QLabel, QMenu, QPlainTextEdit, QScrollArea, QToolButton, QVBoxLayout, QWidget,
@@ -16,9 +18,11 @@ from .. import languages as L
 from .. import win32
 from ..lookup import is_word_mode, wants_rewrites
 from ..providers import speech
+from .icon import mark_pixmap
+from .theme import acrylic_tint, palette
 from .widgets import (
     ICON_CLOSE, ICON_HISTORY, ICON_PIN, ICON_SETTINGS, ICON_STAR, ICON_STAR_ON, LanguageColumn, caps_label,
-    clear_layout, icon_button,
+    clear_layout, fade_in, icon_button,
 )
 
 if TYPE_CHECKING:
@@ -28,6 +32,8 @@ SHADOW = 18          # px of soft shadow around the card
 SETUP_HINTS = 3      # lookups that show "Set up rewrites" while there's no OpenRouter key
 EXTRA_COLUMN_W = 270  # how much wider the popup gets per extra language
 MENU_ITEMS = 15       # saved / recent lookups listed in the history menu
+OPEN_MS = 120         # fade + small upward slide when the popup opens
+OPEN_RISE = 8
 _TAGS = re.compile(r"<[^>]+>")
 
 
@@ -64,29 +70,29 @@ class Popup(QWidget):
         self._translations: dict[str, str] = {}
         self._speaker = ThreadPoolExecutor(1, thread_name_prefix="vl-speech")  # one clip at a time
         self.speech_failed.connect(self.flash)
+        self._shadow = SHADOW   # 0 while Windows draws the shadow (acrylic backdrop)
 
-        outer = QVBoxLayout(self)
-        outer.setContentsMargins(SHADOW, SHADOW - 6, SHADOW, SHADOW + 6)
+        self.outer = QVBoxLayout(self)
         self.card = QFrame()
         self.card.setObjectName("card")
-        outer.addWidget(self.card)
+        self.outer.addWidget(self.card)
 
         v = QVBoxLayout(self.card)
-        v.setContentsMargins(18, 12, 14, 12)
-        v.setSpacing(10)
+        v.setContentsMargins(16, 12, 12, 12)
+        v.setSpacing(12)
 
         # header
         self.header = QWidget()
         head = QHBoxLayout(self.header)
         head.setContentsMargins(0, 0, 0, 0)
         head.setSpacing(8)
-        dot = QLabel()
-        dot.setObjectName("brandDot")
+        self.mark = QLabel()
+        self.mark.setObjectName("brandMark")
         brand = caps_label("VERBALOGIC", "brand")
         self.pill = QLabel("")
         self.pill.setObjectName("pill")
         self.pill.hide()
-        head.addWidget(dot)
+        head.addWidget(self.mark)
         head.addWidget(brand)
         head.addSpacing(6)
         head.addWidget(self.pill)
@@ -121,8 +127,8 @@ class Popup(QWidget):
         inner = QWidget()
         inner.setObjectName("bodyInner")
         self.columns_row = QHBoxLayout(inner)
-        self.columns_row.setContentsMargins(0, 0, 4, 0)
-        self.columns_row.setSpacing(10)
+        self.columns_row.setContentsMargins(4, 0, 4, 0)
+        self.columns_row.setSpacing(0)
         self.scroll.setWidget(inner)
         v.addWidget(self.scroll, 1)
 
@@ -165,9 +171,26 @@ class Popup(QWidget):
         self.rebuild()
 
     # --- config-driven parts ---
+    def apply_backdrop(self) -> None:
+        """Windows 11 acrylic behind the card, or the solid card with its hand-drawn shadow."""
+        ui = self.app.cfg["ui"]
+        on = win32.set_acrylic(int(self.winId()), acrylic_tint(ui) if ui["backdrop"] == "acrylic" else None)
+        self._shadow = 0 if on else SHADOW
+        s = self._shadow
+        self.outer.setContentsMargins(s, max(0, s - 6), s, s + 6 if s else 0)
+        if self.card.property("acrylic") != on:
+            self.card.setProperty("acrylic", on)
+            for w in (self.card, *self.card.findChildren(QWidget)):  # rules below #card[acrylic] too
+                w.style().unpolish(w)
+                w.style().polish(w)
+        self._resize()
+        self.update()
+
     def rebuild(self) -> None:
         """Re-create extras toggles and columns (after a config change)."""
         cfg = self.app.cfg
+        self.apply_backdrop()
+        self.mark.setPixmap(mark_pixmap(palette(cfg["ui"])["accent"], 18, self.devicePixelRatioF()))
         self._active_extras &= set(cfg["languages"]["available_extra"]) | set(cfg["languages"]["extra"])
         clear_layout(self.extras_box)
         for code in cfg["languages"]["available_extra"]:
@@ -196,10 +219,15 @@ class Popup(QWidget):
             return
         clear_layout(self.columns_row)
         self._columns = {}
-        for lang in langs:
+        for i, lang in enumerate(langs):
             col = LanguageColumn(lang, self.app.cfg["ui"], self.copy_text, self.lookup_word, self.speak)
             col.nav.moved.connect(self._step_sense)
             col.nav.list_requested.connect(self._open_meanings)
+            if i:  # a hairline and whitespace between columns instead of a box around each
+                divider = QFrame()
+                divider.setObjectName("divider")
+                self.columns_row.addWidget(divider)
+            col.layout().setContentsMargins(0 if i == 0 else 20, 4, 0 if i == len(langs) - 1 else 20, 8)
             self._columns[lang] = col
             self.columns_row.addWidget(col, 1)
         self._resize()
@@ -215,8 +243,8 @@ class Popup(QWidget):
     def _resize(self) -> None:
         ui = self.app.cfg["ui"]
         extra = max(0, len(self._columns) - 2)
-        w = ui["width"] + extra * EXTRA_COLUMN_W + 2 * SHADOW
-        h = ui["height"] + 2 * SHADOW
+        w = ui["width"] + extra * EXTRA_COLUMN_W + 2 * self._shadow
+        h = ui["height"] + 2 * self._shadow
         screen = QGuiApplication.screenAt(QCursor.pos()) or QGuiApplication.primaryScreen()
         geo = screen.availableGeometry()
         w, h = min(w, geo.width() - 20), min(h, geo.height() - 20)
@@ -236,6 +264,7 @@ class Popup(QWidget):
         self.source.setPlainText(text)
         if not self.isVisible():
             self._place()
+            self._animate_open()
         self.show()
         self.raise_()
         self.activateWindow()
@@ -252,8 +281,29 @@ class Popup(QWidget):
             self._set_star(False, enabled=False)
             self.pill.hide()
             for col in self._columns.values():
-                col.reset(False, False)
+                col.reset(False, False, loading=False)
             self.status.setText(note or "Nothing selected. Type or paste text above.")
+
+    def _animate_open(self) -> None:
+        """Fade in and rise a few pixels. Skipped when Windows' animation effects are off."""
+        if not win32.animations_enabled():
+            self.setWindowOpacity(1.0)
+            return
+        end = self.pos()
+        fade = QPropertyAnimation(self, b"windowOpacity", self)
+        fade.setStartValue(0.0)
+        fade.setEndValue(1.0)
+        rise = QPropertyAnimation(self, b"pos", self)
+        rise.setStartValue(end + QPoint(0, OPEN_RISE))
+        rise.setEndValue(end)
+        group = QParallelAnimationGroup(self)
+        for a in (fade, rise):
+            a.setDuration(OPEN_MS)
+            a.setEasingCurve(QEasingCurve.OutCubic)
+            group.addAnimation(a)
+        self.setWindowOpacity(0.0)
+        self.move(end + QPoint(0, OPEN_RISE))
+        group.start(QPropertyAnimation.DeleteWhenStopped)
 
     def run_lookup(self, text: str) -> None:
         text = text.strip()
@@ -415,8 +465,7 @@ class Popup(QWidget):
             show = col is host and count >= 2
             col.nav.setVisible(show)
             if show:
-                pos = next((c.sense_pos(self._sense_i) for c in self._columns.values() if c.sense_count()), "")
-                col.nav.set_state(self._sense_i, count, pos)
+                col.nav.set_state(self._sense_i, count)
 
     def _show_sense(self, col) -> None:
         sense = col.show_sense(self._sense_i)
@@ -433,6 +482,7 @@ class Popup(QWidget):
         self._sense_i = index
         for col in self._columns.values():
             self._show_sense(col)
+            fade_in(col)
         self._update_nav()
 
     def _open_meanings(self) -> None:
@@ -511,6 +561,8 @@ class Popup(QWidget):
         super().mousePressEvent(e)
 
     def paintEvent(self, _):  # noqa: N802 - soft shadow without QGraphicsEffect (keeps scrolling fast)
+        if not self._shadow:
+            return
         p = QPainter(self)
         p.setRenderHint(QPainter.Antialiasing)
         rect = QRectF(self.card.geometry())

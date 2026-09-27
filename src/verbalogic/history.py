@@ -84,6 +84,14 @@ class History:
     def starred(self, n: int = 50) -> list[Entry]:
         return self._select("WHERE starred = 1 ORDER BY ts DESC LIMIT ?", (n,))
 
+    def counts(self) -> tuple[int, int]:
+        """(saved words, recent lookups that aren't saved)."""
+        try:
+            saved, total = self._db.execute("SELECT COALESCE(SUM(starred), 0), COUNT(*) FROM lookups").fetchone()
+        except sqlite3.Error:
+            return 0, 0
+        return int(saved), int(total) - int(saved)
+
     def clear_recent(self) -> None:
         """Forget recent lookups; saved words stay."""
         self._write("DELETE FROM lookups WHERE starred = 0")

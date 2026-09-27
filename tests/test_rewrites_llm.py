@@ -1,3 +1,5 @@
+import json
+
 from verbalogic.lookup import is_word_mode
 from verbalogic.providers.llm import extract_json
 from verbalogic.rewrites import build_prompt, parse_rewrites
@@ -42,3 +44,27 @@ def test_word_mode():
     assert is_word_mode("take advantage of")
     assert not is_word_mode("I can't make it to the meeting tomorrow")
     assert not is_word_mode("")
+
+
+def test_openrouter_only_calls_free_models():
+    import httpx
+
+    from verbalogic.providers.llm import ChatClient
+
+    asked = []
+
+    def handler(request):
+        if request.method == "GET":  # model discovery
+            return httpx.Response(200, json={"data": [{"id": "paid/model"}, {"id": "found/model:free"}]})
+        asked.append(json.loads(request.content)["model"])
+        return httpx.Response(200, json={"choices": [{"message": {"content": '{"ok": true}'}}]})
+
+    client = httpx.Client(transport=httpx.MockTransport(handler))
+    chat = ChatClient(client, "https://openrouter.ai/api/v1", ["openai/gpt-5", "a/b:free"], "key", 5)
+    assert chat.complete_json("hi") == ({"ok": True}, "a/b:free")
+    assert asked == ["a/b:free"]
+
+    asked.clear()  # only paid models configured: never called, a listed free model is used instead
+    chat = ChatClient(client, "https://openrouter.ai/api/v1", ["openai/gpt-5"], "key", 5)
+    assert chat.complete_json("hi")[1] == "found/model:free"
+    assert asked == ["found/model:free"]

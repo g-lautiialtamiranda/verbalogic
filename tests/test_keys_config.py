@@ -49,12 +49,27 @@ def test_bad_values_fall_back(tmp_path):
     )
     cfg, warnings = config.load(p)
     assert cfg["hotkey"]["open"] == "ctrl+alt+d"
-    assert cfg["ui"]["accent"] == "#6C5CE7"
+    assert cfg["ui"]["accent"] == config.defaults()["ui"]["accent"]
     assert cfg["ui"]["width"] == 820
     assert cfg["languages"]["primary"] != cfg["languages"]["secondary"]
     assert "foo.exe" not in cfg["capture"]["copy_keys"]
     assert cfg["capture"]["copy_keys"]["warp.exe"] == "ctrl+shift+c"  # defaults still merged in
     assert len(warnings) >= 4
+
+
+def test_old_purple_default_moves_to_new_default(tmp_path):
+    p = tmp_path / "config.toml"
+    p.write_text('[ui]\naccent = "#6c5ce7"\ntheme = "paper"\n', encoding="utf-8")
+    cfg, warnings = config.load(p)
+    assert cfg["ui"]["accent"] == config.defaults()["ui"]["accent"] != "#6C5CE7"
+    assert cfg["ui"]["theme"] == "paper"
+    assert warnings == []
+
+
+def test_chosen_accent_is_kept(tmp_path):
+    p = tmp_path / "config.toml"
+    p.write_text('[ui]\naccent = "#7A2E34"\n', encoding="utf-8")
+    assert config.load(p)[0]["ui"]["accent"] == "#7A2E34"
 
 
 def test_save_keeps_comments(tmp_path):

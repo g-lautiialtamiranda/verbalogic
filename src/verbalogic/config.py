@@ -17,6 +17,7 @@ import tomlkit
 from .keys import parse_combo, parse_copy_keys
 
 APP_NAME = "VerbaLogic"
+OLD_DEFAULT_ACCENT = "#6C5CE7"  # the first versions' purple, copied into every user's file
 
 _LANG_RE = re.compile(r"^[a-z]{2,3}(-[a-z0-9]{2,4})?$", re.I)
 _HEX_RE = re.compile(r"^#[0-9a-fA-F]{6}$")
@@ -33,7 +34,8 @@ _INT_RANGES = {
     ("history", "size"): (10, 5000),
 }
 _CHOICES = {
-    ("ui", "theme"): {"system", "light", "dark"},
+    ("ui", "theme"): {"system", "light", "dark", "paper"},
+    ("ui", "backdrop"): {"acrylic", "none"},
     ("rewrites", "spanish_variant"): {"both", "rioplatense", "neutral"},
 }
 
@@ -138,8 +140,10 @@ def validate(cfg: dict, dflt: dict) -> tuple[dict, list[str]]:
     langs["extra"] = [c.lower() for c in langs["extra"]]
     langs["available_extra"] = [c.lower() for c in langs["available_extra"]]
 
+    if cfg["ui"]["accent"].upper() == OLD_DEFAULT_ACCENT:  # nobody picked it: move them to today's default
+        cfg["ui"]["accent"] = dflt["ui"]["accent"]
     if not _HEX_RE.match(cfg["ui"]["accent"]):
-        reset("ui", "accent", "must look like #6C5CE7.")
+        reset("ui", "accent", "must look like #2F4A7A.")
 
     copy_keys = cfg["capture"]["copy_keys"]
     clean_keys: dict[str, str] = {}

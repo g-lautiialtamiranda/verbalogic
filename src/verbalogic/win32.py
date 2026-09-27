@@ -54,6 +54,17 @@ GetClipboardSequenceNumber = _fn(user32, "GetClipboardSequenceNumber", wintypes.
 GlobalLock = _fn(kernel32, "GlobalLock", ctypes.c_void_p, wintypes.HGLOBAL)
 GlobalUnlock = _fn(kernel32, "GlobalUnlock", wintypes.BOOL, wintypes.HGLOBAL)
 
+SPI_GETCLIENTAREAANIMATION = 0x1042
+SystemParametersInfoW = _fn(user32, "SystemParametersInfoW", wintypes.BOOL, wintypes.UINT, wintypes.UINT, ctypes.c_void_p, wintypes.UINT)
+
+
+def animations_enabled() -> bool:
+    """Windows' "Animation effects" setting (Settings > Accessibility > Visual effects)."""
+    on = wintypes.BOOL(True)
+    if not SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, ctypes.byref(on), 0):
+        return True
+    return bool(on.value)
+
 
 def foreground_process_name() -> tuple[int, str]:
     """(hwnd, 'warp.exe') of the window that has focus. Name is '' if unknown."""
@@ -100,3 +111,81 @@ def read_clipboard_text(retries: int = 10) -> str | None:
             GlobalUnlock(handle)
     finally:
         CloseClipboard()
+
+
+# --- Windows 11 acrylic backdrop (F-06) ---
+# DWMWA_SYSTEMBACKDROP_TYPE only drew a flat grey on our frameless, per-pixel-alpha popup, so this uses
+# the accent policy that Windows' own flyouts use, plus DWM's rounded corners (which also bring its shadow).
+_ACCENT_DISABLED = 0
+_ACCENT_ENABLE_ACRYLICBLURBEHIND = 4
+_WCA_ACCENT_POLICY = 19
+_DWMWA_WINDOW_CORNER_PREFERENCE = 33
+_DWMWCP_DEFAULT, _DWMWCP_ROUND = 0, 2
+
+
+class _ACCENT_POLICY(ctypes.Structure):
+    _fields_ = [("AccentState", ctypes.c_int), ("AccentFlags", ctypes.c_int),
+                ("GradientColor", wintypes.DWORD), ("AnimationId", ctypes.c_int)]
+
+
+class _WINCOMPATTRDATA(ctypes.Structure):
+    _fields_ = [("Attribute", ctypes.c_int), ("Data", ctypes.c_void_p), ("SizeOfData", ctypes.c_size_t)]
+
+
+def _set_accent(hwnd: int, state: int, abgr: int = 0) -> bool:
+    try:
+        swca = _fn(user32, "SetWindowCompositionAttribute", wintypes.BOOL, wintypes.HWND, ctypes.POINTER(_WINCOMPATTRDATA))
+    except AttributeError:
+        return False
+    policy = _ACCENT_POLICY(state, 0, abgr, 0)
+    data = _WINCOMPATTRDATA(_WCA_ACCENT_POLICY, ctypes.cast(ctypes.pointer(policy), ctypes.c_void_p), ctypes.sizeof(policy))
+    return bool(swca(hwnd, ctypes.byref(data)))
+
+
+def _set_corners(hwnd: int, preference: int) -> bool:
+    try:
+        dwm = ctypes.WinDLL("dwmapi")
+    except OSError:
+        return False
+    value = ctypes.c_int(preference)
+    return dwm.DwmSetWindowAttribute(wintypes.HWND(hwnd), _DWMWA_WINDOW_CORNER_PREFERENCE, ctypes.byref(value), 4) == 0
+
+
+def supports_acrylic() -> bool:
+    """Windows 11 (build 22000+). On Windows 10 this blur makes dragging windows lag."""
+    import sys
+
+    return sys.getwindowsversion().build >= 22000
+
+
+def set_acrylic(hwnd: int, rgba: tuple[int, int, int, int] | None) -> bool:
+    """Blur the desktop behind the window, tinted with rgba, with rounded corners and a shadow
+    drawn by Windows. None turns it off. Returns True if the backdrop is on."""
+    if rgba is None or not supports_acrylic():
+        _set_accent(hwnd, _ACCENT_DISABLED)
+        _set_corners(hwnd, _DWMWCP_DEFAULT)
+        return False
+    r, g, b, a = rgba
+    if not _set_accent(hwnd, _ACCENT_ENABLE_ACRYLICBLURBEHIND, (a << 24) | (b << 16) | (g << 8) | r):
+        return False
+    if not _set_corners(hwnd, _DWMWCP_ROUND):
+        _set_accent(hwnd, _ACCENT_DISABLED)  # square blurred corners under a rounded card look broken
+        return False
+    return True
+
+
+# --- shell icon refresh ---
+_SHCNE_UPDATEITEM = 0x00002000
+_SHCNE_ASSOCCHANGED = 0x08000000
+_SHCNF_IDLIST, _SHCNF_PATHW = 0x0000, 0x0005
+
+
+def refresh_shell_icons(paths: list[str]) -> None:
+    """Tell Explorer these shortcuts changed, so the taskbar and Start menu redraw their icons."""
+    shell32 = ctypes.WinDLL("shell32")
+    notify = shell32.SHChangeNotify
+    notify.restype = None
+    notify.argtypes = [wintypes.LONG, wintypes.UINT, ctypes.c_void_p, ctypes.c_void_p]
+    for path in paths:
+        notify(_SHCNE_UPDATEITEM, _SHCNF_PATHW, ctypes.c_wchar_p(path), None)
+    notify(_SHCNE_ASSOCCHANGED, _SHCNF_IDLIST, None, None)
