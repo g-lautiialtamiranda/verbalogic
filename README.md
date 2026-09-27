@@ -33,9 +33,9 @@ py -3 -m venv .venv
 ```
 
 ## Run it
-Double-click `scripts\start-verbalogic.cmd`, or run it from a terminal.
+The first time, double-click `scripts\start-verbalogic.cmd`. After that, VerbaLogic is in the **Start menu** like any app: press the Windows key, type *VerbaLogic* and press Enter. It opens the popup and starts the app first if it isn't running. Right-click it there to **pin it to the taskbar or Start**.
 
-A purple **V** appears in the system tray. Right-click it for Settings, the config file, "Start with Windows" and Quit.
+A purple **V** appears in the system tray. Right-click it for Settings, the config file, "Start with Windows" and Quit. Turn on **Start with Windows** and the shortcut (Ctrl+Alt+D) works after every restart without opening anything.
 
 ## Update
 ```powershell

@@ -7,6 +7,7 @@ import logging
 import os
 import sys
 import threading
+from pathlib import Path
 
 import httpx
 from PySide6.QtCore import QFileSystemWatcher, QObject, Qt, QTimer, Signal
@@ -68,11 +69,21 @@ class VerbaLogicApp(QObject):
 
         self._sync_startup()
         threading.Thread(target=self._prewarm, daemon=True).start()
+        if with_hotkey:  # a real run, not a test: make sure VerbaLogic is in the Start menu
+            icon = self._icon_file()
+            threading.Thread(target=startup.ensure_menu_shortcut, args=(icon,), daemon=True).start()
         for w in warnings:
             self.notify("Config problem", w, warn=True)
         self._first_run_hint()
 
     # --- setup helpers ---
+    def _icon_file(self) -> Path:
+        """The app icon as an .ico for Windows shortcuts (made once, on the UI thread)."""
+        path = config.app_dir() / "verbalogic.ico"
+        if not path.exists():
+            make_pixmap(self.cfg["ui"]["accent"], 256).save(str(path), "ICO")
+        return path
+
     def _apply_style(self) -> None:
         self.qapp.setStyleSheet(stylesheet(self.cfg["ui"]))
 
@@ -196,10 +207,7 @@ class VerbaLogicApp(QObject):
     def _sync_startup(self) -> None:
         want = self.cfg["startup"]["start_with_windows"]
         if want != startup.is_enabled():
-            icon_path = config.app_dir() / "verbalogic.ico"
-            if want and not icon_path.exists():
-                make_pixmap(self.cfg["ui"]["accent"], 256).save(str(icon_path), "ICO")
-            if not startup.set_enabled(want, icon_path):
+            if not startup.set_enabled(want, self._icon_file() if want else None):
                 self.notify("Start with Windows", "Couldn't create the startup shortcut.", warn=True)
         self._startup_action.blockSignals(True)
         self._startup_action.setChecked(startup.is_enabled())
@@ -246,6 +254,7 @@ def _already_running() -> bool:
 
 def main() -> None:
     parser = argparse.ArgumentParser(prog="verbalogic")
+    parser.add_argument("--open", action="store_true", help="open the popup right away (the Start menu entry uses this)")
     parser.add_argument("--show", metavar="TEXT", help="open the popup with this text (for testing)")
     parser.add_argument("--screenshot", metavar="PNG", help="with --show: save a screenshot after a few seconds and quit")
     parser.add_argument("--wait", type=float, default=5.0, help="seconds before the screenshot")
@@ -272,6 +281,8 @@ def main() -> None:
         QLocalServer.removeServer(INSTANCE_KEY)
         server.listen(INSTANCE_KEY)
         server.newConnection.connect(lambda: (server.nextPendingConnection(), app.popup.present("")))
+        if args.open:
+            QTimer.singleShot(200, lambda: app.popup.present(""))
     else:
         QTimer.singleShot(200, lambda: app.popup.present(args.show))
         if args.screenshot:
